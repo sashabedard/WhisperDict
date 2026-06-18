@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotkey:  HotkeyManager!
     private let recorder    = AudioRecorder()
     private let transcriber = Transcriber()
+    private let enhancer    = Enhancer()
     private let overlay     = RecordingOverlayController()
     private var isBusy  = false
     private var isReady = false
@@ -31,6 +32,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self, selector: #selector(preferencesChanged),
             name: .preferencesChanged, object: nil
         )
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(enhanceSettingsChanged),
+            name: .enhanceSettingsChanged, object: nil
+        )
 
         if UserSettings.shared.hasLaunchedBefore {
             startWarmup()
@@ -51,6 +56,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 try await transcriber.warmup()
                 isReady = true
                 recorder.prepare()   // warm the audio graph so the first words aren't clipped
+                if UserSettings.shared.enhanceEnabled, Enhancer.isAvailable {
+                    Task { await self.enhancer.warmup() }
+                }
                 menuBar.setStatus("Hold Right-Option to dictate")
                 onboarding?.setModelStatus(loading: false, ready: true)
             } catch {
@@ -63,6 +71,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func preferencesChanged() {
         Task { await transcriber.reset() }
         startWarmup()
+    }
+
+    @objc private func enhanceSettingsChanged() {
+        if UserSettings.shared.enhanceEnabled, Enhancer.isAvailable {
+            Task { await enhancer.warmup() }
+        } else {
+            Task { await enhancer.reset() }
+        }
     }
 
     // MARK: - Recording
@@ -98,13 +114,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             let text = await transcriptionTask.value
             timeoutTask.cancel()
+
+            // Optional on-device cleanup. Races the LLM against a 10s timeout;
+            // on timeout or any failure it falls back to the raw transcript.
+            var output = text
+            if !text.isEmpty, UserSettings.shared.enhanceEnabled, Enhancer.isAvailable {
+                await MainActor.run { [self] in self.menuBar.setStatus("Enhancing…", icon: "✨") }
+                let style = EnhanceStyle(rawValue: UserSettings.shared.enhanceStyle) ?? .faithful
+                output = await withTaskGroup(of: String?.self) { group in
+                    group.addTask { await self.enhancer.enhance(text, style: style) }
+                    group.addTask { try? await Task.sleep(nanoseconds: 10_000_000_000); return nil }
+                    let first = await group.next() ?? nil
+                    group.cancelAll()
+                    return first ?? text
+                }
+            }
+
             await MainActor.run { [self] in
-                if !text.isEmpty {
-                    let pasted = PasteHelper.paste(text)
-                    HistoryManager.shared.add(text)
+                if !output.isEmpty {
+                    let pasted = PasteHelper.paste(output)
+                    HistoryManager.shared.add(output)
                     self.menuBar.refreshHistory()
                     if pasted {
-                        let preview = text.count <= 48 ? text : String(text.prefix(45)) + "…"
+                        let preview = output.count <= 48 ? output : String(output.prefix(45)) + "…"
                         self.menuBar.setStatus("✓ \(preview)")
                     } else {
                         self.menuBar.setStatus("⚠️ Enable Accessibility to auto-paste (text copied)", icon: "⚠️")

@@ -33,6 +33,16 @@ final class UserSettings {
         set { UserDefaults.standard.set(newValue, forKey: "vocabulary") }
     }
 
+    /// Local, private usage counters (never leave the Mac).
+    var totalDictations: Int {
+        get { UserDefaults.standard.integer(forKey: "totalDictations") }
+        set { UserDefaults.standard.set(newValue, forKey: "totalDictations") }
+    }
+    var totalWords: Int {
+        get { UserDefaults.standard.integer(forKey: "totalWords") }
+        set { UserDefaults.standard.set(newValue, forKey: "totalWords") }
+    }
+
     /// Raw snippets text, one `trigger => expansion` per line.
     var snippetsRaw: String {
         get { UserDefaults.standard.string(forKey: "snippets") ?? "" }

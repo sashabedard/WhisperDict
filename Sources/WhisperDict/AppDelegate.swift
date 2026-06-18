@@ -161,6 +161,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 if !finalText.isEmpty {
                     let pasted = PasteHelper.paste(finalText)
                     HistoryManager.shared.add(finalText)
+                    UserSettings.shared.totalDictations += 1
+                    UserSettings.shared.totalWords += finalText.split(whereSeparator: \.isWhitespace).count
                     self.menuBar.refreshHistory()
                     if pasted {
                         let preview = finalText.count <= 48 ? finalText : String(finalText.prefix(45)) + "…"

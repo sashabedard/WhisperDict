@@ -51,10 +51,11 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     private let vocabField    = NSTextField()
     private let profileField  = ProfileTextField()
     private let snippetsField = ProfileTextField()
+    private let statsLabel = NSTextField(labelWithString: "")
 
     convenience init() {
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 540, height: 760),
+            contentRect: NSRect(x: 0, y: 0, width: 540, height: 790),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -79,6 +80,16 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
 
     func windowWillClose(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+    }
+
+    func windowDidBecomeKey(_ notification: Notification) {
+        statsLabel.stringValue = statsSummary()
+    }
+
+    private func statsSummary() -> String {
+        let d = UserSettings.shared.totalDictations
+        let w = UserSettings.shared.totalWords
+        return d == 0 ? "No dictations yet." : "\(w) words across \(d) dictations — all on your Mac."
     }
 
     // MARK: - View
@@ -218,8 +229,12 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         footnote.textColor = .tertiaryLabelColor
         footnote.alignment = .left
 
+        statsLabel.font = .systemFont(ofSize: 11)
+        statsLabel.textColor = .tertiaryLabelColor
+        statsLabel.stringValue = statsSummary()
+
         // ── Layout ─────────────────────────────────────────
-        let stack = NSStackView(views: [header, card, enhanceCard, snippetsCard, snippetsHint, footnote])
+        let stack = NSStackView(views: [header, card, enhanceCard, snippetsCard, snippetsHint, footnote, statsLabel])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 22
@@ -237,6 +252,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
             snippetsCard.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
             snippetsHint.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
             footnote.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
+            statsLabel.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
         ])
         return bg
     }

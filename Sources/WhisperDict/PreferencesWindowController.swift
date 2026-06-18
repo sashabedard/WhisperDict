@@ -149,6 +149,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         modelCol.orientation = .vertical
         modelCol.alignment = .leading
         modelCol.spacing = 4
+        modelCaption.widthAnchor.constraint(equalTo: modelCol.widthAnchor).isActive = true
 
         configurePopup(hotkeyPopup,
                        items: HotkeyManager.presets.map { $0.label },
@@ -190,6 +191,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         styleCol.orientation = .vertical
         styleCol.alignment = .leading
         styleCol.spacing = 4
+        enhanceCaption.widthAnchor.constraint(equalTo: styleCol.widthAnchor).isActive = true
 
         vocabField.stringValue = UserSettings.shared.vocabulary
         vocabField.placeholderString = "WhisperKit, Sasha Bédard, …"
@@ -268,36 +270,51 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         popup.translatesAutoresizingMaskIntoConstraints = false
     }
 
-    private func makeCard(rows: [(String, NSView)]) -> NSView {
-        let grid = NSGridView()
-        grid.translatesAutoresizingMaskIntoConstraints = false
-        grid.rowSpacing = 14
-        grid.columnSpacing = 18
+    private static let labelColumnWidth: CGFloat = 96
 
+    private func makeCard(rows: [(String, NSView)]) -> NSView {
+        let col = NSStackView()
+        col.orientation = .vertical
+        col.alignment = .leading
+        col.spacing = 14
+        col.translatesAutoresizingMaskIntoConstraints = false
+
+        var rowStacks: [NSStackView] = []
         for (label, control) in rows {
             let lbl = NSTextField(labelWithString: label)
             lbl.font = .systemFont(ofSize: 13, weight: .regular)
             lbl.textColor = .secondaryLabelColor
             lbl.alignment = .right
-            grid.addRow(with: [lbl, control])
-        }
-        // Configure columns AFTER rows exist (NSGridView creates columns lazily)
-        if grid.numberOfColumns >= 1 {
-            grid.column(at: 0).xPlacement = .trailing
-        }
-        if grid.numberOfColumns >= 2 {
-            grid.column(at: 1).xPlacement = .fill
+            lbl.translatesAutoresizingMaskIntoConstraints = false
+            lbl.setContentHuggingPriority(.required, for: .horizontal)
+            lbl.setContentCompressionResistancePriority(.required, for: .horizontal)
+            lbl.widthAnchor.constraint(equalToConstant: Self.labelColumnWidth).isActive = true
+
+            // Fixed-width label + control that fills the rest. Controls with low
+            // horizontal hugging (popups, text fields, the profile field) stretch;
+            // switches keep their natural size next to the label.
+            let row = NSStackView(views: [lbl, control])
+            row.orientation = .horizontal
+            row.alignment = .centerY
+            row.spacing = 14
+            row.distribution = .fill
+            row.translatesAutoresizingMaskIntoConstraints = false
+            col.addArrangedSubview(row)
+            rowStacks.append(row)
         }
 
         let card = CardView()
         card.translatesAutoresizingMaskIntoConstraints = false
-        card.addSubview(grid)
+        card.addSubview(col)
         NSLayoutConstraint.activate([
-            grid.topAnchor.constraint(equalTo: card.topAnchor, constant: 20),
-            grid.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
-            grid.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
-            grid.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -20),
+            col.topAnchor.constraint(equalTo: card.topAnchor, constant: 20),
+            col.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 20),
+            col.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -20),
+            col.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -20),
         ])
+        for row in rowStacks {
+            row.widthAnchor.constraint(equalTo: col.widthAnchor).isActive = true
+        }
         return card
     }
 

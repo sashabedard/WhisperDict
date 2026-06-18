@@ -71,7 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         isBusy = true
         do {
             try recorder.start()
-            recorder.onLevel = { [weak self] rms in self?.overlay.setLevel(rms) }
+            recorder.onBands = { [weak self] bands in self?.overlay.setBands(bands) }
             overlay.show()
             menuBar.setStatus("Recording…", icon: "🔴")
         } catch {
@@ -99,11 +99,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             timeoutTask.cancel()
             await MainActor.run { [self] in
                 if !text.isEmpty {
-                    PasteHelper.paste(text)
+                    let pasted = PasteHelper.paste(text)
                     HistoryManager.shared.add(text)
                     self.menuBar.refreshHistory()
-                    let preview = text.count <= 48 ? text : String(text.prefix(45)) + "…"
-                    self.menuBar.setStatus("✓ \(preview)")
+                    if pasted {
+                        let preview = text.count <= 48 ? text : String(text.prefix(45)) + "…"
+                        self.menuBar.setStatus("✓ \(preview)")
+                    } else {
+                        self.menuBar.setStatus("⚠️ Enable Accessibility to auto-paste (text copied)", icon: "⚠️")
+                    }
                 } else {
                     self.menuBar.setStatus("Hold Right-Option to dictate")
                 }

@@ -26,9 +26,16 @@ struct LevelMeter {
 
     /// Stateful: normalize + asymmetric exponential smoothing.
     mutating func update(rms: Float) -> Float {
-        let target = Self.normalize(rms: rms)
-        let coeff = target > smoothed ? Self.attack : Self.release
-        smoothed += (target - smoothed) * coeff
+        smooth(Self.normalize(rms: rms))
+    }
+
+    /// Asymmetric exponential smoothing (fast attack, slow release) toward an
+    /// already-normalized [0, 1] target. Used for per-band spectrum values that
+    /// are pre-normalized and must not be log-scaled again.
+    mutating func smooth(_ target: Float) -> Float {
+        let t = min(max(target, 0), 1)
+        let coeff = t > smoothed ? Self.attack : Self.release
+        smoothed += (t - smoothed) * coeff
         return smoothed
     }
 }

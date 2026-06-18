@@ -58,14 +58,13 @@ final class RecordingOverlayController {
         }
     }
 
-    func setLevel(_ rms: Float) {
-        // One shared sample, fanned out to per-bar meters with slight offsets so
-        // neighboring bars differ → looks like an equalizer, not 8 clones.
+    func setBands(_ bands: [Float]) {
+        // Each bar tracks its own frequency band, smoothed independently, so the
+        // row behaves like a real spectrum analyzer instead of moving in lockstep.
         var heights: [CGFloat] = []
         for i in 0..<barCount {
-            let jitter = Float(1.0 - 0.25 * abs(Double(i) - Double(barCount) / 2) / Double(barCount))
-            let level = meters[i].update(rms: rms * jitter)
-            heights.append(CGFloat(level))
+            let raw = i < bands.count ? bands[i] : 0
+            heights.append(CGFloat(meters[i].smooth(raw)))
         }
         bars.setHeights(heights)
     }
@@ -131,8 +130,17 @@ final class BarsView: NSView {
     }
 
     private func buildSpinner() {
+        // The layer gets real bounds and the arc is drawn in the layer's OWN
+        // coordinate space (centered on those bounds), so anchorPoint (0.5, 0.5)
+        // lands on the arc's center and transform.rotation.z spins in place
+        // rather than orbiting the view origin.
+        let box: CGFloat = 24
         let radius: CGFloat = 9
-        let center = CGPoint(x: bounds.midX, y: bounds.midY)
+        spinnerLayer.bounds = CGRect(x: 0, y: 0, width: box, height: box)
+        spinnerLayer.position = CGPoint(x: bounds.midX, y: bounds.midY)
+        spinnerLayer.anchorPoint = CGPoint(x: 0.5, y: 0.5)
+
+        let center = CGPoint(x: box / 2, y: box / 2)
         let path = NSBezierPath()
         path.appendArc(withCenter: center, radius: radius, startAngle: 0, endAngle: 270)
         spinnerLayer.path = path.cgPathCompat

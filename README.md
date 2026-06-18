@@ -54,12 +54,21 @@ OpenAI's Whisper models locally via Core ML.
 ```bash
 git clone https://github.com/sashabedard/WhisperDict.git
 cd WhisperDict
-./build.sh
+./Scripts/build.sh
 open WhisperDict.app
 ```
 
 The first transcription downloads the Whisper model from the Hugging Face Hub
 (one-time, a few hundred MB depending on the model).
+
+All build and packaging tooling lives in [`Scripts/`](Scripts):
+
+| Script | Purpose |
+| --- | --- |
+| `Scripts/build.sh` | Compile and assemble `WhisperDict.app` |
+| `Scripts/setup_signing.sh` | Create a stable self-signed identity (keeps TCC grants across rebuilds) |
+| `Scripts/make_dmg.sh` | Package the app into a distributable `.dmg` |
+| `Scripts/make_icon.py` · `make_dmg_bg.py` | Regenerate the app icon and DMG artwork |
 
 ## Usage
 

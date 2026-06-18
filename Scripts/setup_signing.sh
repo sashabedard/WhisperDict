@@ -5,7 +5,7 @@
 # code hash on every build and macOS forgets the Accessibility/Microphone
 # grants each time (you'd have to re-authorize after every rebuild).
 #
-# Run once: ./setup_signing.sh   (you may get one keychain prompt — Allow it)
+# Run once: ./Scripts/setup_signing.sh   (you may get one keychain prompt — Allow it)
 #
 set -euo pipefail
 

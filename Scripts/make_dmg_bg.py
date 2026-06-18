@@ -2,9 +2,11 @@
 """DMG background — warm gradient with a drag-to-Applications hint and arrow.
 Rendered at 2x (1200x800) for Retina; the Finder window is 600x400 points."""
 
+import os.path
+
 from PIL import Image, ImageDraw, ImageFont
 
-S = 1                       # 1:1 with the Finder window (600x400 points) so the
+S = 1                      # 1:1 with the Finder window (600x400 points) so the
                             # art aligns with the icon slots; dmgbuild maps it 1:1
 W, H = 600 * S, 400 * S
 img = Image.new("RGB", (W, H))
@@ -48,5 +50,6 @@ draw.line([(x0, y), (x1, y)], fill=accent, width=5 * S)
 head = 14 * S
 draw.polygon([(x1, y), (x1 - head, y - head * 0.7), (x1 - head, y + head * 0.7)], fill=accent)
 
-img.save("dmg_background.png")
-print("OK dmg_background.png")
+_out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "dmg_background.png")
+img.save(_out)
+print(f"OK {_out}")

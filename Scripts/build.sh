@@ -2,10 +2,13 @@
 #
 # Build WhisperDict.app from Swift Package
 #
-# Usage: ./build.sh
+# Usage: ./Scripts/build.sh   (works from anywhere — cd's to the repo root)
 #
 
 set -euo pipefail
+
+# Operate from the repo root regardless of where the script is invoked.
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 NAME="WhisperDict"
 APP="${NAME}.app"
@@ -28,16 +31,17 @@ mkdir -p "$APP/Contents/Resources"
 
 cp "$BIN_PATH" "$APP/Contents/MacOS/$NAME"
 cp Info.plist "$APP/Contents/Info.plist"
-[[ -f AppIcon.icns ]] && cp AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
+ICON="Scripts/assets/AppIcon.icns"
+[[ -f "$ICON" ]] && cp "$ICON" "$APP/Contents/Resources/AppIcon.icns"
 
-# Prefer a stable self-signed identity (./setup_signing.sh) so macOS keeps the
-# Accessibility/Microphone grants across rebuilds. Fall back to ad-hoc.
+# Prefer a stable self-signed identity (./Scripts/setup_signing.sh) so macOS
+# keeps the Accessibility/Microphone grants across rebuilds. Fall back to ad-hoc.
 IDENTITY="WhisperDict Self-Signed"
 if security find-identity -p codesigning 2>/dev/null | grep -q "$IDENTITY"; then
     echo "→ Signing with '$IDENTITY'…"
     codesign --force --deep --sign "$IDENTITY" "$APP"
 else
-    echo "→ Ad-hoc signing (run ./setup_signing.sh for a stable identity)…"
+    echo "→ Ad-hoc signing (run ./Scripts/setup_signing.sh for a stable identity)…"
     codesign --force --deep --sign - "$APP"
 fi
 

@@ -54,7 +54,8 @@ def draw_icon(size: int) -> Image.Image:
 
 
 def main():
-    iconset = "AppIcon.iconset"
+    assets = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
+    iconset = os.path.join(assets, "AppIcon.iconset")
     os.makedirs(iconset, exist_ok=True)
 
     specs = [
@@ -76,8 +77,9 @@ def main():
         img.save(path, "PNG")
         print(f"  {path}")
 
-    subprocess.run(["iconutil", "-c", "icns", iconset, "-o", "AppIcon.icns"], check=True)
-    print("\nAppIcon.icns generated.")
+    icns = os.path.join(assets, "AppIcon.icns")
+    subprocess.run(["iconutil", "-c", "icns", iconset, "-o", icns], check=True)
+    print(f"\n{icns} generated.")
 
 
 if __name__ == "__main__":

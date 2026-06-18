@@ -1,21 +1,29 @@
-# Swift / SwiftPM build artifacts
+# ── Swift / SwiftPM build artifacts ──────────────────────────────
 .build/
 .swiftpm/
 Package.pins
-*.xcodeproj
 DerivedData/
+*.xcodeproj
+xcuserdata/
 
-# Built app bundle (distributed via GitHub Releases, not committed)
+# ── Build & distribution outputs (shipped via GitHub Releases) ────
 WhisperDict.app/
 *.app/
 *.zip
+*.dmg
 
-# macOS
+# ── macOS noise ───────────────────────────────────────────────────
 .DS_Store
 
-# Claude Code / local session state (personal, do not publish)
+# ── Python tooling cache (Scripts/) ───────────────────────────────
+__pycache__/
+*.pyc
+
+# ── Internal tooling, never published ─────────────────────────────
+# AI/agent session state and planning artifacts
 .claude/
 .remember/
+docs/superpowers/
 
-# Distributable disk images (attached to Releases, not committed)
-*.dmg
+# Tests are kept out of the public release
+Tests/

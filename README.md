@@ -44,7 +44,7 @@ Grab the latest `WhisperDict.app` from the
 ### Option B — Build from source
 
 ```bash
-git clone https://github.com/sshroot/WhisperDict.git
+git clone https://github.com/sashabedard/WhisperDict.git
 cd WhisperDict
 ./build.sh
 open WhisperDict.app

@@ -50,6 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             do {
                 try await transcriber.warmup()
                 isReady = true
+                recorder.prepare()   // warm the audio graph so the first words aren't clipped
                 menuBar.setStatus("Hold Right-Option to dictate")
                 onboarding?.setModelStatus(loading: false, ready: true)
             } catch {

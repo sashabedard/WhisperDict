@@ -2,7 +2,8 @@ import AVFoundation
 import QuartzCore
 
 final class AudioRecorder {
-    private var engine = AVAudioEngine()
+    private let engine = AVAudioEngine()   // reused across recordings (warm-start)
+    private var isSetUp = false
     private var samples: [Float] = []
     private let lock = NSLock()
     private var converter: AVAudioConverter?
@@ -15,6 +16,7 @@ final class AudioRecorder {
     /// thread (the tap callback is its sole reader/writer).
     private var recent: [Float] = []
     private var lastBandsEmit: CFTimeInterval = 0
+    private var configObserver: NSObjectProtocol?
 
     private let outputFormat = AVAudioFormat(
         commonFormat: .pcmFormatFloat32,
@@ -23,25 +25,68 @@ final class AudioRecorder {
         interleaved: false
     )!
 
-    func start() throws {
-        engine = AVAudioEngine()
+    init() {
+        // The audio graph is built for a fixed input format. If the input device
+        // or its format changes, rebuild the tap/converter so we don't feed the
+        // converter mismatched buffers (which would yield empty transcriptions).
+        configObserver = NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange, object: engine, queue: nil
+        ) { [weak self] _ in self?.rebuild() }
+    }
+
+    deinit {
+        if let configObserver { NotificationCenter.default.removeObserver(configObserver) }
+    }
+
+    /// Pre-builds the audio graph and warms the engine so the first recording
+    /// captures from the very first word. Safe to call once the app is ready.
+    func prepare() {
+        setUpIfNeeded()
+        if isSetUp { engine.prepare() }
+    }
+
+    private func setUpIfNeeded() {
+        guard !isSetUp else { return }
         let input = engine.inputNode
         let inputFormat = input.outputFormat(forBus: 0)
-
-        guard let conv = AVAudioConverter(from: inputFormat, to: outputFormat) else {
-            throw NSError(domain: "AudioRecorder", code: 1,
-                          userInfo: [NSLocalizedDescriptionKey: "AVAudioConverter init failed"])
-        }
-        self.converter = conv
-        lock.lock(); samples.removeAll(); lock.unlock()
-        recent.removeAll(keepingCapacity: true)
-        lastBandsEmit = 0
-
+        guard inputFormat.sampleRate > 0,
+              let conv = AVAudioConverter(from: inputFormat, to: outputFormat) else { return }
+        converter = conv
         input.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { [weak self] buffer, _ in
             self?.process(buffer: buffer, format: inputFormat)
         }
-        engine.prepare()
-        try engine.start()
+        isSetUp = true
+    }
+
+    private func rebuild() {
+        let wasRunning = engine.isRunning
+        if isSetUp { engine.inputNode.removeTap(onBus: 0) }
+        engine.stop()
+        converter = nil
+        isSetUp = false
+        setUpIfNeeded()
+        if wasRunning, isSetUp {
+            engine.prepare()
+            try? engine.start()
+        }
+    }
+
+    func start() throws {
+        setUpIfNeeded()
+        guard isSetUp else {
+            throw NSError(domain: "AudioRecorder", code: 1,
+                          userInfo: [NSLocalizedDescriptionKey: "Audio input unavailable"])
+        }
+        lock.lock(); samples.removeAll(); lock.unlock()
+        recent.removeAll(keepingCapacity: true)
+        lastBandsEmit = 0
+        // The engine is only stopped via pause() between recordings, so a fresh
+        // start just resumes the already-warm hardware route — no cold-start gap
+        // that would clip the first words.
+        if !engine.isRunning {
+            engine.prepare()
+            try engine.start()
+        }
     }
 
     private func process(buffer: AVAudioPCMBuffer, format: AVAudioFormat) {
@@ -76,8 +121,10 @@ final class AudioRecorder {
     }
 
     func stop() -> [Float] {
-        engine.inputNode.removeTap(onBus: 0)
-        engine.stop()
+        // pause() (not stop()) keeps render resources allocated so the next
+        // start() resumes instantly, while still releasing the mic (indicator
+        // off) between dictations.
+        engine.pause()
         onBands = nil  // paired with AppDelegate.startRecording(); cleared so no stale callbacks fire between sessions
         lock.lock()
         defer { lock.unlock() }

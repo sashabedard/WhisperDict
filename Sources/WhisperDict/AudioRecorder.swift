@@ -28,6 +28,7 @@ final class AudioRecorder {
         }
         self.converter = conv
         lock.lock(); samples.removeAll(); lock.unlock()
+        lastLevelEmit = 0
 
         input.installTap(onBus: 0, bufferSize: 4096, format: inputFormat) { [weak self] buffer, _ in
             self?.process(buffer: buffer, format: inputFormat)
@@ -69,8 +70,7 @@ final class AudioRecorder {
     func stop() -> [Float] {
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
-        onLevel = nil
-        lastLevelEmit = 0
+        onLevel = nil  // paired with AppDelegate.startRecording(); cleared so no stale level callbacks fire between sessions
         lock.lock()
         defer { lock.unlock() }
         let maxSamples = 16_000 * 30  // 30 seconds at 16 kHz

@@ -16,3 +16,6 @@ WhisperDict.app/
 # Claude Code / local session state (personal, do not publish)
 .claude/
 .remember/
+
+# Distributable disk images (attached to Releases, not committed)
+*.dmg

@@ -22,6 +22,33 @@ Whisper models locally via Core ML.
 
 ---
 
+## Speak messy, paste clean
+
+Real speech is full of "um", restarts, and "no wait, I meant…". WhisperDict can
+**clean it up as you go** — on-device — so what lands at your cursor reads like
+you wrote it, not like you mumbled it:
+
+```
+You say:   "um so basically i want to uh add a function that takes a user id
+            and uh returns their profile no wait it should return their email"
+
+You get:   "So basically I want to add a function that takes a user id and
+            returns their email address."
+```
+
+Fillers gone, punctuation fixed, and the mid-sentence correction resolved — and
+it still **never leaves your Mac**. Pick a style in Preferences:
+
+- **Faithful** — clean only, keep your exact words *(default)*
+- **Polished** — tighten and rephrase for clarity
+- **Email** — rewrite in a professional tone
+
+This runs on Apple's on-device model, so it needs **macOS 26 + Apple
+Intelligence**. Without them, WhisperDict simply pastes the raw transcript — the
+feature switches off gracefully.
+
+---
+
 ## Why people use it
 
 - **Think out loud** — rough out a feature, a reply, or an idea by just talking.
@@ -40,6 +67,10 @@ Whisper models locally via Core ML.
 - **On-device Whisper** — runs the `whisper-large-v3-turbo` model locally via
   WhisperKit + Core ML (no network calls, even on first run after the model
   downloads).
+- **Smart cleanup (on-device AI)** — optionally polishes each transcript: drops
+  "um/uh", fixes punctuation, and resolves mid-sentence corrections, in Faithful,
+  Polished, or Email style. Runs on Apple's on-device model — still 100% private.
+  *(Requires macOS 26 + Apple Intelligence; off-by-default-gracefully otherwise.)*
 - **Menu-bar only** — no dock icon, stays out of your way (`🎙`).
 - **History** — the last 8 transcriptions are kept; click one to re-paste it.
 - **Configurable** — pick your language (defaults to French) and Whisper model
@@ -53,6 +84,9 @@ Whisper models locally via Core ML.
   - **Microphone** access (prompted automatically)
   - **Accessibility** access — System Settings → Privacy & Security →
     Accessibility (needed to synthesize ⌘V into other apps)
+- *Optional:* **Smart cleanup** needs macOS 26 with **Apple Intelligence**
+  enabled (System Settings → Apple Intelligence). Without it, dictation still
+  works — WhisperDict just pastes the raw transcript.
 
 ## Install
 

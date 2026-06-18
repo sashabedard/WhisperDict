@@ -135,7 +135,7 @@ final class BarsView: NSView {
         let center = CGPoint(x: bounds.midX, y: bounds.midY)
         let path = NSBezierPath()
         path.appendArc(withCenter: center, radius: radius, startAngle: 0, endAngle: 270)
-        spinnerLayer.path = path.cgPath
+        spinnerLayer.path = path.cgPathCompat
         spinnerLayer.strokeColor = NSColor.white.cgColor
         spinnerLayer.fillColor = NSColor.clear.cgColor
         spinnerLayer.lineWidth = 2.5
@@ -173,7 +173,7 @@ final class BarsView: NSView {
 }
 
 private extension NSBezierPath {
-    var cgPath: CGPath {
+    var cgPathCompat: CGPath {
         let path = CGMutablePath()
         var points = [CGPoint](repeating: .zero, count: 3)
         for i in 0..<elementCount {

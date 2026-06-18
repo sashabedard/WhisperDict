@@ -30,10 +30,16 @@ cp "$BIN_PATH" "$APP/Contents/MacOS/$NAME"
 cp Info.plist "$APP/Contents/Info.plist"
 [[ -f AppIcon.icns ]] && cp AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
-echo "→ Ad-hoc signing…"
-# Signing ad-hoc (sans cert Apple Developer). Suffisant pour usage perso.
-# Pour distribuer hors Mac App Store il faudrait un Developer ID + notarization.
-codesign --force --deep --sign - "$APP"
+# Prefer a stable self-signed identity (./setup_signing.sh) so macOS keeps the
+# Accessibility/Microphone grants across rebuilds. Fall back to ad-hoc.
+IDENTITY="WhisperDict Self-Signed"
+if security find-identity -p codesigning 2>/dev/null | grep -q "$IDENTITY"; then
+    echo "→ Signing with '$IDENTITY'…"
+    codesign --force --deep --sign "$IDENTITY" "$APP"
+else
+    echo "→ Ad-hoc signing (run ./setup_signing.sh for a stable identity)…"
+    codesign --force --deep --sign - "$APP"
+fi
 
 echo ""
 echo "✓ Built $APP"

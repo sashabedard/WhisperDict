@@ -13,10 +13,13 @@ concurrency:
 jobs:
   build:
     name: Release build (macOS, Apple Silicon)
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
 
+      # Dependencies (swift-jinja ≥ 2.0) require Swift tools 6.0+. The macos-15
+      # image ships Xcode 16 (Swift 6.x) by default, which satisfies this; the
+      # version is printed below so any image drift is visible in the logs.
       - name: Show toolchain
         run: swift --version
 

@@ -128,14 +128,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     return first ?? text
                 }
             }
+            let finalText = output   // immutable capture across the actor hop
 
             await MainActor.run { [self] in
-                if !output.isEmpty {
-                    let pasted = PasteHelper.paste(output)
-                    HistoryManager.shared.add(output)
+                if !finalText.isEmpty {
+                    let pasted = PasteHelper.paste(finalText)
+                    HistoryManager.shared.add(finalText)
                     self.menuBar.refreshHistory()
                     if pasted {
-                        let preview = output.count <= 48 ? output : String(output.prefix(45)) + "…"
+                        let preview = finalText.count <= 48 ? finalText : String(finalText.prefix(45)) + "…"
                         self.menuBar.setStatus("✓ \(preview)")
                     } else {
                         self.menuBar.setStatus("⚠️ Enable Accessibility to auto-paste (text copied)", icon: "⚠️")

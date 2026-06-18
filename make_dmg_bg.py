@@ -4,7 +4,8 @@ Rendered at 2x (1200x800) for Retina; the Finder window is 600x400 points."""
 
 from PIL import Image, ImageDraw, ImageFont
 
-S = 2                       # retina scale
+S = 1                       # 1:1 with the Finder window (600x400 points) so the
+                            # art aligns with the icon slots; dmgbuild maps it 1:1
 W, H = 600 * S, 400 * S
 img = Image.new("RGB", (W, H))
 px = img.load()

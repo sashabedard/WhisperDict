@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotkey:  HotkeyManager!
     private let recorder    = AudioRecorder()
     private let transcriber = Transcriber()
+    private let overlay     = RecordingOverlayController()
     private var isBusy  = false
     private var isReady = false
 
@@ -70,16 +71,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         isBusy = true
         do {
             try recorder.start()
+            recorder.onLevel = { [weak self] rms in self?.overlay.setLevel(rms) }
+            overlay.show()
             menuBar.setStatus("Recording…", icon: "🔴")
         } catch {
             menuBar.setStatus("Mic error: \(error.localizedDescription)", icon: "⚠️")
             isBusy = false
+            overlay.hide()
         }
     }
 
     private func stopAndTranscribe() {
         guard isBusy else { return }
         let audio = recorder.stop()
+        overlay.enterSpinner()
         menuBar.setStatus("Transcribing…", icon: "⏳")
 
         Task.detached { [self] in
@@ -103,6 +108,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.menuBar.setStatus("Hold Right-Option to dictate")
                 }
                 self.isBusy = false
+                self.overlay.hide()
             }
         }
     }

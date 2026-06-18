@@ -43,6 +43,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     private let modelPopup = NSPopUpButton()
     private let modelCaption = NSTextField(wrappingLabelWithString: "")
     private let enhanceSwitch = NSSwitch()
+    private let perAppSwitch   = NSSwitch()
     private let stylePopup    = NSPopUpButton()
     private let enhanceCaption = NSTextField(wrappingLabelWithString: "")
     private let vocabField    = NSTextField()
@@ -50,7 +51,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
 
     convenience init() {
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 540, height: 580),
+            contentRect: NSRect(x: 0, y: 0, width: 540, height: 620),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -148,6 +149,11 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         enhanceSwitch.target = self
         enhanceSwitch.action = #selector(enhanceToggled)
 
+        perAppSwitch.state = (UserSettings.shared.perAppContextEnabled && available) ? .on : .off
+        perAppSwitch.isEnabled = available && UserSettings.shared.enhanceEnabled
+        perAppSwitch.target = self
+        perAppSwitch.action = #selector(perAppToggled)
+
         configurePopup(stylePopup,
                        items: enhanceStyles.map { $0.label },
                        selectedIndex: enhanceStyles.firstIndex { $0.id == UserSettings.shared.enhanceStyle } ?? 0,
@@ -157,7 +163,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         enhanceCaption.font = .systemFont(ofSize: 11)
         enhanceCaption.textColor = .secondaryLabelColor
         enhanceCaption.stringValue = available
-            ? "Cleans up filler words, punctuation, and self-corrections on-device."
+            ? "Cleans up dictation on-device. With Auto style on, the style adapts to the app (email, code…) and this picker is the fallback."
             : "Requires macOS 26 and Apple Intelligence — enable it in System Settings → Apple Intelligence."
 
         let styleCol = NSStackView(views: [stylePopup, enhanceCaption])
@@ -180,6 +186,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
 
         let enhanceCard = makeCard(rows: [
             ("Enhance",    enhanceSwitch),
+            ("Auto style", perAppSwitch),
             ("Style",      styleCol),
             ("Vocabulary", vocabField),
             ("About you",  profileField),
@@ -266,9 +273,15 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     @objc private func enhanceToggled() {
         let on = enhanceSwitch.state == .on
         UserSettings.shared.enhanceEnabled = on
+        perAppSwitch.isEnabled = on && Enhancer.isAvailable
         stylePopup.isEnabled = on && Enhancer.isAvailable
         vocabField.isEnabled = on && Enhancer.isAvailable
         profileField.setEnabled(on && Enhancer.isAvailable)
+        NotificationCenter.default.post(name: .enhanceSettingsChanged, object: nil)
+    }
+
+    @objc private func perAppToggled() {
+        UserSettings.shared.perAppContextEnabled = perAppSwitch.state == .on
         NotificationCenter.default.post(name: .enhanceSettingsChanged, object: nil)
     }
 

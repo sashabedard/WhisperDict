@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let overlay     = RecordingOverlayController()
     private var isBusy  = false
     private var isReady = false
+    private var pendingBundleID: String?   // frontmost app captured at record time
 
     private var prefsWindow: PreferencesWindowController?
     private var onboarding:  OnboardingWindowController?
@@ -84,6 +85,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startRecording() {
         guard isReady, !isBusy else { return }
         isBusy = true
+        // Capture the target app now, before our overlay appears.
+        pendingBundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
         do {
             try recorder.start()
             recorder.onBands = { [weak self] bands in self?.overlay.setBands(bands) }
@@ -102,6 +105,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         overlay.enterSpinner()
         menuBar.setStatus("Transcribing…", icon: "⏳")
 
+        let bundleID = pendingBundleID
+
         Task.detached { [self] in
             let transcriptionTask = Task<String, Never> {
                 await self.transcriber.transcribe(audio)
@@ -118,7 +123,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             var output = text
             if !text.isEmpty, UserSettings.shared.enhanceEnabled, Enhancer.isAvailable {
                 await MainActor.run { [self] in self.menuBar.setStatus("Enhancing…", icon: "✨") }
-                let style = EnhanceStyle(rawValue: UserSettings.shared.enhanceStyle) ?? .faithful
+                let userStyle = EnhanceStyle(rawValue: UserSettings.shared.enhanceStyle) ?? .faithful
+                let style = UserSettings.shared.perAppContextEnabled
+                    ? AppContext.resolvedStyle(userDefault: userStyle, bundleID: bundleID)
+                    : userStyle
                 let vocab = UserSettings.shared.vocabularyTerms
                 let profile = UserSettings.shared.profile
                 output = await withTaskGroup(of: String?.self) { group in

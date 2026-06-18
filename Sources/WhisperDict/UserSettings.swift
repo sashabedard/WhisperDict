@@ -33,6 +33,13 @@ final class UserSettings {
         set { UserDefaults.standard.set(newValue, forKey: "vocabulary") }
     }
 
+    /// When true, the Enhance style is chosen from the frontmost app (email tone
+    /// in mail clients, code style in editors), falling back to `enhanceStyle`.
+    var perAppContextEnabled: Bool {
+        get { (UserDefaults.standard.object(forKey: "perAppContextEnabled") as? Bool) ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "perAppContextEnabled") }
+    }
+
     /// Free-form "about you" (name, role, projects) fed to the Enhance prompt as
     /// context so the model spells names/jargon and understands the domain.
     var profile: String {

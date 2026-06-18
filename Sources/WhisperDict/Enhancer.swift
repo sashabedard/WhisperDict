@@ -4,8 +4,10 @@ import FoundationModels
 #endif
 
 /// Cleanup styles for the on-device Enhance step. Each maps to a system prompt.
+/// `faithful`/`polished`/`email` are user-selectable; `code` is applied
+/// automatically by per-app context when dictating into an editor/terminal.
 enum EnhanceStyle: String {
-    case faithful, polished, email
+    case faithful, polished, email, code
 }
 
 #if canImport(FoundationModels)
@@ -112,6 +114,14 @@ actor Enhancer {
             return base + "\nPolished mode: after the fixes, tighten and rephrase for clarity and concision."
         case .email:
             return base + "\nEmail mode: after the fixes, rewrite in a clear, professional tone suitable for an email or message."
+        case .code:
+            return base + """
+
+            Code mode: this dictation is about programming. Render spoken identifiers in their
+            conventional casing (camelCase, snake_case, PascalCase) and as single tokens
+            (e.g. "get user profile" → getUserProfile, "is loading" → isLoading). Keep
+            technical terms, types, and file names intact. Do not turn code into prose.
+            """
         }
     }
 }

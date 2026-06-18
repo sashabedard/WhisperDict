@@ -54,14 +54,19 @@ actor Enhancer {
     }
 
     /// Returns a cleaned version of `raw`, or `raw` unchanged on any failure.
-    /// `vocabulary` is an optional glossary the model should spell exactly.
-    func enhance(_ raw: String, style: EnhanceStyle, vocabulary: [String] = []) async -> String {
+    /// `vocabulary` is an optional glossary to spell exactly; `profile` is an
+    /// optional free-form "about you" used as context (never echoed).
+    func enhance(_ raw: String, style: EnhanceStyle, vocabulary: [String] = [], profile: String = "") async -> String {
         #if canImport(FoundationModels)
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, Self.isAvailable else { return raw }
         if #available(macOS 26.0, *) {
             let session = LanguageModelSession(instructions: Self.systemPrompt(for: style))
             var prompt = ""
+            let trimmedProfile = profile.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmedProfile.isEmpty {
+                prompt += "Speaker profile (context only — use it to spell names/jargon correctly; NEVER copy this profile into your output):\n\(trimmedProfile)\n\n"
+            }
             if !vocabulary.isEmpty {
                 prompt += "Known terms — spell these exactly when they occur: \(vocabulary.joined(separator: ", ")).\n"
             }

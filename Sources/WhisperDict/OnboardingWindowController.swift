@@ -8,10 +8,11 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
     private var modelRow  = ModelLoadRow()
     private var doneButton = NSButton()
     private var moveCard: NSView?
+    private let profileField = ProfileTextField()
     private var onReady: (() -> Void)?
 
     convenience init(onReady: @escaping () -> Void) {
-        let height: CGFloat = InstallLocation.shouldPromptMove ? 440 : 330
+        let height: CGFloat = InstallLocation.shouldPromptMove ? 560 : 450
         let panel = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: 400, height: height),
             styleMask: [.titled, .closable, .fullSizeContentView],
@@ -105,6 +106,7 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
     }
 
     @objc private func done() {
+        UserSettings.shared.profile = profileField.stringValue
         UserSettings.shared.hasLaunchedBefore = true
         close()
         onReady?()
@@ -198,13 +200,30 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
         doneButton.isEnabled = false
         doneButton.alphaValue = 0.4
 
+        // About-you card — seeds the Enhance context (name, role, projects).
+        let aboutTitle = NSTextField(labelWithString: "About you (optional)")
+        aboutTitle.font = .systemFont(ofSize: 13, weight: .medium)
+        aboutTitle.textColor = .labelColor
+
+        profileField.stringValue = UserSettings.shared.profile
+
+        let aboutHint = NSTextField(wrappingLabelWithString: "Your name, role, and what you work on — helps WhisperDict spell names and terms right. Stays on your Mac.")
+        aboutHint.font = .systemFont(ofSize: 11)
+        aboutHint.textColor = .secondaryLabelColor
+
+        let aboutCard = NSStackView(views: [aboutTitle, profileField, aboutHint])
+        aboutCard.orientation = .vertical
+        aboutCard.alignment = .leading
+        aboutCard.spacing = 6
+        aboutCard.translatesAutoresizingMaskIntoConstraints = false
+
         var rows: [NSView] = [headerStack]
         if InstallLocation.shouldPromptMove {
             let card = makeMoveCard()
             moveCard = card
             rows.append(card)
         }
-        rows += [micRow, axRow, modelRow, doneButton]
+        rows += [micRow, axRow, modelRow, aboutCard, doneButton]
 
         let stack = NSStackView(views: rows)
         stack.orientation = .vertical
@@ -223,6 +242,10 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
         if let moveCard {
             moveCard.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -56).isActive = true
         }
+        aboutCard.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -56).isActive = true
+        profileField.widthAnchor.constraint(equalTo: aboutCard.widthAnchor).isActive = true
+        profileField.heightAnchor.constraint(equalToConstant: 80).isActive = true
+        aboutHint.widthAnchor.constraint(equalTo: aboutCard.widthAnchor).isActive = true
         return effect
     }
 }

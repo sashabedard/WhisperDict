@@ -38,7 +38,7 @@ private let modelNotes: [String: String] = [
 ]
 
 @MainActor
-final class PreferencesWindowController: NSWindowController, NSWindowDelegate, NSTextFieldDelegate {
+final class PreferencesWindowController: NSWindowController, NSWindowDelegate, NSTextFieldDelegate, NSTextViewDelegate {
     private let langPopup  = NSPopUpButton()
     private let modelPopup = NSPopUpButton()
     private let modelCaption = NSTextField(wrappingLabelWithString: "")
@@ -46,10 +46,11 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     private let stylePopup    = NSPopUpButton()
     private let enhanceCaption = NSTextField(wrappingLabelWithString: "")
     private let vocabField    = NSTextField()
+    private let profileField  = ProfileTextField()
 
     convenience init() {
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 540, height: 480),
+            contentRect: NSRect(x: 0, y: 0, width: 540, height: 580),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -172,10 +173,16 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         vocabField.font = .systemFont(ofSize: 13)
         vocabField.translatesAutoresizingMaskIntoConstraints = false
 
+        profileField.stringValue = UserSettings.shared.profile
+        profileField.setEnabled(available && UserSettings.shared.enhanceEnabled)
+        profileField.textView.delegate = self
+        profileField.heightAnchor.constraint(equalToConstant: 60).isActive = true
+
         let enhanceCard = makeCard(rows: [
             ("Enhance",    enhanceSwitch),
             ("Style",      styleCol),
             ("Vocabulary", vocabField),
+            ("About you",  profileField),
         ])
 
         // ── Footnote ───────────────────────────────────────
@@ -261,12 +268,19 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         UserSettings.shared.enhanceEnabled = on
         stylePopup.isEnabled = on && Enhancer.isAvailable
         vocabField.isEnabled = on && Enhancer.isAvailable
+        profileField.setEnabled(on && Enhancer.isAvailable)
         NotificationCenter.default.post(name: .enhanceSettingsChanged, object: nil)
     }
 
     func controlTextDidEndEditing(_ obj: Notification) {
         guard (obj.object as? NSTextField) === vocabField else { return }
         UserSettings.shared.vocabulary = vocabField.stringValue
+        NotificationCenter.default.post(name: .enhanceSettingsChanged, object: nil)
+    }
+
+    func textDidEndEditing(_ notification: Notification) {
+        guard (notification.object as? NSTextView) === profileField.textView else { return }
+        UserSettings.shared.profile = profileField.stringValue
         NotificationCenter.default.post(name: .enhanceSettingsChanged, object: nil)
     }
 

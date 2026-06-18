@@ -33,6 +33,13 @@ final class UserSettings {
         set { UserDefaults.standard.set(newValue, forKey: "vocabulary") }
     }
 
+    /// Free-form "about you" (name, role, projects) fed to the Enhance prompt as
+    /// context so the model spells names/jargon and understands the domain.
+    var profile: String {
+        get { UserDefaults.standard.string(forKey: "profile") ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: "profile") }
+    }
+
     /// Parsed, trimmed, non-empty vocabulary terms fed to the Enhance prompt so
     /// the model spells names/jargon correctly.
     var vocabularyTerms: [String] {

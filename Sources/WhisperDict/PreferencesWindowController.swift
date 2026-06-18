@@ -2,6 +2,7 @@ import Cocoa
 
 extension Notification.Name {
     static let preferencesChanged = Notification.Name("preferencesChanged")
+    static let enhanceSettingsChanged = Notification.Name("enhanceSettingsChanged")
 }
 
 private let languages: [(code: String, label: String)] = [
@@ -22,6 +23,12 @@ private let models: [(id: String, label: String)] = [
     ("distil-whisper_distil-large-v3_594MB", "Distil Large v3 — 594 MB"),
 ]
 
+private let enhanceStyles: [(id: String, label: String)] = [
+    ("faithful", "Faithful — clean only, keep my words"),
+    ("polished", "Polished — tighten & rephrase"),
+    ("email",    "Email — professional tone"),
+]
+
 /// One-line guidance shown under the model picker so a first-time user knows
 /// which to pick. Distil is English-only — important for non-English users.
 private let modelNotes: [String: String] = [
@@ -35,10 +42,13 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
     private let langPopup  = NSPopUpButton()
     private let modelPopup = NSPopUpButton()
     private let modelCaption = NSTextField(wrappingLabelWithString: "")
+    private let enhanceSwitch = NSSwitch()
+    private let stylePopup    = NSPopUpButton()
+    private let enhanceCaption = NSTextField(wrappingLabelWithString: "")
 
     convenience init() {
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 540, height: 360),
+            contentRect: NSRect(x: 0, y: 0, width: 540, height: 480),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -128,6 +138,36 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
             ("Model",    modelCol),
         ])
 
+        // ── Enhancement card ───────────────────────────────
+        let available = Enhancer.isAvailable
+
+        enhanceSwitch.state = (UserSettings.shared.enhanceEnabled && available) ? .on : .off
+        enhanceSwitch.isEnabled = available
+        enhanceSwitch.target = self
+        enhanceSwitch.action = #selector(enhanceToggled)
+
+        configurePopup(stylePopup,
+                       items: enhanceStyles.map { $0.label },
+                       selectedIndex: enhanceStyles.firstIndex { $0.id == UserSettings.shared.enhanceStyle } ?? 0,
+                       action: #selector(styleChanged))
+        stylePopup.isEnabled = available && UserSettings.shared.enhanceEnabled
+
+        enhanceCaption.font = .systemFont(ofSize: 11)
+        enhanceCaption.textColor = .secondaryLabelColor
+        enhanceCaption.stringValue = available
+            ? "Cleans up filler words, punctuation, and self-corrections on-device."
+            : "Requires macOS 26 and Apple Intelligence — enable it in System Settings → Apple Intelligence."
+
+        let styleCol = NSStackView(views: [stylePopup, enhanceCaption])
+        styleCol.orientation = .vertical
+        styleCol.alignment = .leading
+        styleCol.spacing = 4
+
+        let enhanceCard = makeCard(rows: [
+            ("Enhance", enhanceSwitch),
+            ("Style",   styleCol),
+        ])
+
         // ── Footnote ───────────────────────────────────────
         let footnote = NSTextField(wrappingLabelWithString: "Changes apply automatically. Switching the model triggers a one-time reload on the next recording.")
         footnote.font = .systemFont(ofSize: 11)
@@ -135,7 +175,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
         footnote.alignment = .left
 
         // ── Layout ─────────────────────────────────────────
-        let stack = NSStackView(views: [header, card, footnote])
+        let stack = NSStackView(views: [header, card, enhanceCard, footnote])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 22
@@ -149,6 +189,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
             stack.trailingAnchor.constraint(equalTo: bg.trailingAnchor),
             stack.bottomAnchor.constraint(lessThanOrEqualTo: bg.bottomAnchor),
             card.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
+            enhanceCard.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
             footnote.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
         ])
         return bg
@@ -203,6 +244,18 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
     @objc private func languageChanged() {
         UserSettings.shared.language = languages[langPopup.indexOfSelectedItem].code
         // No reload needed — Transcriber reads the language on every call.
+    }
+
+    @objc private func enhanceToggled() {
+        let on = enhanceSwitch.state == .on
+        UserSettings.shared.enhanceEnabled = on
+        stylePopup.isEnabled = on && Enhancer.isAvailable
+        NotificationCenter.default.post(name: .enhanceSettingsChanged, object: nil)
+    }
+
+    @objc private func styleChanged() {
+        UserSettings.shared.enhanceStyle = enhanceStyles[stylePopup.indexOfSelectedItem].id
+        NotificationCenter.default.post(name: .enhanceSettingsChanged, object: nil)
     }
 
     @objc private func modelChanged() {

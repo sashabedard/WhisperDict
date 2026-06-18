@@ -5,7 +5,7 @@ extension Notification.Name {
 }
 
 private let languages: [(code: String, label: String)] = [
-    ("auto", "Auto-detect"),
+    ("auto", "Auto (Français + English)"),
     ("fr",   "Français"),
     ("en",   "English"),
     ("es",   "Español"),

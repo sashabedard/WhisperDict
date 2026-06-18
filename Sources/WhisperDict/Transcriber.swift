@@ -18,19 +18,37 @@ actor Transcriber {
         loadedModel = ""
     }
 
+    /// Languages allowed in "auto" mode. Constraining detection to these stops
+    /// Whisper from tagging short/noisy dictation clips as random languages.
+    private let autoLanguages = ["en", "fr"]
+
+    /// Resolves which language to force. For a specific setting, use it. For
+    /// "auto", run Whisper's language detector but pick the most probable of
+    /// `autoLanguages` only — so the result is always English or French, never
+    /// Welsh or Maori on a half-second clip.
+    private func resolveLanguage(_ setting: String, audio: [Float], pipe: WhisperKit) async -> String {
+        guard setting == "auto" else { return setting }
+        guard let probs = try? await pipe.detectLangauge(audioArray: audio).langProbs else {
+            return autoLanguages.first ?? "en"
+        }
+        return autoLanguages.max {
+            (probs[$0] ?? -.greatestFiniteMagnitude) < (probs[$1] ?? -.greatestFiniteMagnitude)
+        } ?? "en"
+    }
+
     func transcribe(_ audio: [Float]) async -> String {
         guard audio.count > 3_200 else { return "" }
         do {
             try await warmup()
             guard let pipe else { return "" }
-            let lang = UserSettings.shared.language
-            let isAuto = (lang == "auto")
+            let setting = UserSettings.shared.language
+            let language = await resolveLanguage(setting, audio: audio, pipe: pipe)
             let options = DecodingOptions(
                 task: .transcribe,            // never translate — keep speech in its own language
-                language: isAuto ? nil : lang,
+                language: language,           // always forced; resolved below
                 temperature: 0.0,
-                usePrefillPrompt: true,       // actually inject <|lang|><|transcribe|> tokens
-                detectLanguage: isAuto        // auto-detect per utterance only in Auto mode
+                usePrefillPrompt: true,       // inject <|lang|><|transcribe|> tokens
+                detectLanguage: false         // we resolve the language ourselves
             )
             let results = try await pipe.transcribe(audioArray: audio, decodeOptions: options)
             return results.map { $0.text }.joined(separator: " ")

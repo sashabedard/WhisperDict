@@ -24,10 +24,13 @@ actor Transcriber {
             try await warmup()
             guard let pipe else { return "" }
             let lang = UserSettings.shared.language
+            let isAuto = (lang == "auto")
             let options = DecodingOptions(
-                language: lang == "auto" ? nil : lang,
+                task: .transcribe,            // never translate — keep speech in its own language
+                language: isAuto ? nil : lang,
                 temperature: 0.0,
-                usePrefillPrompt: false
+                usePrefillPrompt: true,       // actually inject <|lang|><|transcribe|> tokens
+                detectLanguage: isAuto        // auto-detect per utterance only in Auto mode
             )
             let results = try await pipe.transcribe(audioArray: audio, decodeOptions: options)
             return results.map { $0.text }.joined(separator: " ")

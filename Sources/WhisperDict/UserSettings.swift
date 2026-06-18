@@ -4,7 +4,7 @@ final class UserSettings {
     static let shared = UserSettings()
 
     var language: String {
-        get { UserDefaults.standard.string(forKey: "language") ?? "fr" }
+        get { UserDefaults.standard.string(forKey: "language") ?? "auto" }
         set { UserDefaults.standard.set(newValue, forKey: "language") }
     }
 

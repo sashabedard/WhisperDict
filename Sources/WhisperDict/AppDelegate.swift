@@ -76,8 +76,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func enhanceSettingsChanged() {
         if UserSettings.shared.enhanceEnabled, Enhancer.isAvailable {
             Task { await enhancer.warmup() }
-        } else {
-            Task { await enhancer.reset() }
         }
     }
 
@@ -121,8 +119,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             if !text.isEmpty, UserSettings.shared.enhanceEnabled, Enhancer.isAvailable {
                 await MainActor.run { [self] in self.menuBar.setStatus("Enhancing…", icon: "✨") }
                 let style = EnhanceStyle(rawValue: UserSettings.shared.enhanceStyle) ?? .faithful
+                let vocab = UserSettings.shared.vocabularyTerms
                 output = await withTaskGroup(of: String?.self) { group in
-                    group.addTask { await self.enhancer.enhance(text, style: style) }
+                    group.addTask { await self.enhancer.enhance(text, style: style, vocabulary: vocab) }
                     group.addTask { try? await Task.sleep(nanoseconds: 10_000_000_000); return nil }
                     let first = await group.next() ?? nil
                     group.cancelAll()

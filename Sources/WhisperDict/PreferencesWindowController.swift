@@ -38,13 +38,14 @@ private let modelNotes: [String: String] = [
 ]
 
 @MainActor
-final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
+final class PreferencesWindowController: NSWindowController, NSWindowDelegate, NSTextFieldDelegate {
     private let langPopup  = NSPopUpButton()
     private let modelPopup = NSPopUpButton()
     private let modelCaption = NSTextField(wrappingLabelWithString: "")
     private let enhanceSwitch = NSSwitch()
     private let stylePopup    = NSPopUpButton()
     private let enhanceCaption = NSTextField(wrappingLabelWithString: "")
+    private let vocabField    = NSTextField()
 
     convenience init() {
         let panel = NSPanel(
@@ -163,9 +164,18 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
         styleCol.alignment = .leading
         styleCol.spacing = 4
 
+        vocabField.stringValue = UserSettings.shared.vocabulary
+        vocabField.placeholderString = "WhisperKit, Sasha Bédard, …"
+        vocabField.isEnabled = available && UserSettings.shared.enhanceEnabled
+        vocabField.delegate = self
+        vocabField.controlSize = .large
+        vocabField.font = .systemFont(ofSize: 13)
+        vocabField.translatesAutoresizingMaskIntoConstraints = false
+
         let enhanceCard = makeCard(rows: [
-            ("Enhance", enhanceSwitch),
-            ("Style",   styleCol),
+            ("Enhance",    enhanceSwitch),
+            ("Style",      styleCol),
+            ("Vocabulary", vocabField),
         ])
 
         // ── Footnote ───────────────────────────────────────
@@ -250,6 +260,13 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
         let on = enhanceSwitch.state == .on
         UserSettings.shared.enhanceEnabled = on
         stylePopup.isEnabled = on && Enhancer.isAvailable
+        vocabField.isEnabled = on && Enhancer.isAvailable
+        NotificationCenter.default.post(name: .enhanceSettingsChanged, object: nil)
+    }
+
+    func controlTextDidEndEditing(_ obj: Notification) {
+        guard (obj.object as? NSTextField) === vocabField else { return }
+        UserSettings.shared.vocabulary = vocabField.stringValue
         NotificationCenter.default.post(name: .enhanceSettingsChanged, object: nil)
     }
 

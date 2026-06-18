@@ -27,6 +27,21 @@ final class UserSettings {
         set { UserDefaults.standard.set(newValue, forKey: "enhanceStyle") }
     }
 
+    /// Raw vocabulary string as typed by the user (comma/newline separated).
+    var vocabulary: String {
+        get { UserDefaults.standard.string(forKey: "vocabulary") ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: "vocabulary") }
+    }
+
+    /// Parsed, trimmed, non-empty vocabulary terms fed to the Enhance prompt so
+    /// the model spells names/jargon correctly.
+    var vocabularyTerms: [String] {
+        vocabulary
+            .split(whereSeparator: { $0 == "," || $0.isNewline })
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+    }
+
     var hasLaunchedBefore: Bool {
         get { UserDefaults.standard.bool(forKey: "hasLaunchedBefore") }
         set { UserDefaults.standard.set(newValue, forKey: "hasLaunchedBefore") }

@@ -12,9 +12,16 @@ final class SpectrumAnalyzer {
     private let window: [Float]
     private let bandRanges: [(lo: Int, hi: Int)]
 
-    // Normalization range (power magnitude in dB) — tuned for 16 kHz voice.
-    private let floorDB: Float = -90
-    private let ceilDB: Float = -20
+    // Sensitivity window, in normalized dB. A full-scale tone peaks near 0 dB
+    // (see normScale), so these are intuitive: a band reads 0 below `floorDB`
+    // and maxes out above `ceilDB`. If the bars saturate, raise `ceilDB` toward
+    // 0; if idle background noise lights them up, raise `floorDB`.
+    private let floorDB: Float = -60
+    private let ceilDB: Float = -15
+    /// Makes the FFT power amplitude-relative (full-scale sine ≈ 0 dB) so the
+    /// dB window above is stable regardless of fftSize. vDSP's magnitudes are
+    /// unnormalized (scale with N²), hence the 1/N² factor.
+    private let normScale: Float
 
     init(fftSize: Int = 1024, bandCount: Int = 8, sampleRate: Float = 16_000) {
         self.fftSize = fftSize
@@ -25,6 +32,7 @@ final class SpectrumAnalyzer {
         self.window = vDSP.window(ofType: Float.self,
                                   usingSequence: .hanningDenormalized,
                                   count: fftSize, isHalfWindow: false)
+        self.normScale = 1.0 / Float(fftSize * fftSize)
 
         // Log-spaced band edges across bins [1, halfSize). Low frequencies get
         // narrower bands so the voice's fundamental/formants spread across bars
@@ -86,7 +94,7 @@ final class SpectrumAnalyzer {
                 count += 1
             }
             let meanPower = count > 0 ? sum / Float(count) : 0
-            let db = 10 * log10(max(meanPower, 1e-12))
+            let db = 10 * log10(max(meanPower * normScale, 1e-12))
             out[b] = min(max((db - floorDB) / (ceilDB - floorDB), 0), 1)
         }
         return out

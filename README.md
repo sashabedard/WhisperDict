@@ -34,12 +34,20 @@ OpenAI's Whisper models locally via Core ML.
 
 ### Option A — Download (recommended)
 
-Grab the latest `WhisperDict.app` from the
-[**Releases**](../../releases) page, unzip it, and move it to `/Applications`.
+1. Grab the latest `WhisperDict.app` from the [**Releases**](../../releases)
+   page and unzip it.
+2. **First launch is blocked by macOS** because the app is ad-hoc signed (not
+   notarized). Double-click it once — macOS refuses — then open **System
+   Settings → Privacy & Security**, scroll to the bottom, and click
+   **“Open Anyway”**, then **Open** in the confirmation dialog.
+   *(On macOS 14 and earlier you can instead Control-click the app → **Open**.)*
+3. On first run, WhisperDict offers to **move itself into Applications** —
+   accept it. That clears the security warning for good. From then on it
+   launches normally and walks you through microphone + accessibility
+   permissions.
 
-> **Gatekeeper note:** the app is ad-hoc signed (not notarized), so on first
-> launch macOS may block it. Right-click the app → **Open**, then confirm — or
-> run `xattr -dr com.apple.quarantine /Applications/WhisperDict.app`.
+> Prefer the command line? `xattr -dr com.apple.quarantine /path/to/WhisperDict.app`
+> removes the quarantine flag so it opens directly.
 
 ### Option B — Build from source
 

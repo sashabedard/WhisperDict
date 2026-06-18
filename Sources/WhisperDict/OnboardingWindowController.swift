@@ -7,11 +7,13 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
     private var axRow     = PermissionRow(icon: "accessibility",      title: "Accessibility")
     private var modelRow  = ModelLoadRow()
     private var doneButton = NSButton()
+    private var moveCard: NSView?
     private var onReady: (() -> Void)?
 
     convenience init(onReady: @escaping () -> Void) {
+        let height: CGFloat = InstallLocation.shouldPromptMove ? 440 : 330
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 330),
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: height),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -108,6 +110,66 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
         onReady?()
     }
 
+    // MARK: - Move to Applications
+
+    @objc private func moveForMe() {
+        // On success the app relaunches from /Applications and this instance
+        // terminates; on failure, fall back to letting the user drag it.
+        if !InstallLocation.moveToApplicationsAndRelaunch() {
+            InstallLocation.revealInFinder()
+        }
+    }
+
+    @objc private func revealApp() { InstallLocation.revealInFinder() }
+
+    @objc private func dismissMove() { moveCard?.isHidden = true }
+
+    private func makeMoveCard() -> NSView {
+        let box = NSView()
+        box.wantsLayer = true
+        box.layer?.cornerRadius = 10
+        box.layer?.cornerCurve = .continuous
+        box.layer?.borderWidth = 1
+        box.layer?.borderColor = NSColor.controlAccentColor.withAlphaComponent(0.45).cgColor
+        box.layer?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.08).cgColor
+        box.translatesAutoresizingMaskIntoConstraints = false
+
+        let title = NSTextField(labelWithString: "Move to Applications")
+        title.font = .systemFont(ofSize: 13, weight: .semibold)
+        title.textColor = .labelColor
+
+        let detail = NSTextField(wrappingLabelWithString: "Move WhisperDict into your Applications folder to finish setup and stop the repeated security warning.")
+        detail.font = .systemFont(ofSize: 11)
+        detail.textColor = .secondaryLabelColor
+
+        let moveBtn = NSButton(title: "Move for me", target: self, action: #selector(moveForMe))
+        moveBtn.bezelStyle = .rounded
+        moveBtn.keyEquivalent = "\r"
+        let revealBtn = NSButton(title: "Reveal in Finder", target: self, action: #selector(revealApp))
+        revealBtn.bezelStyle = .rounded
+        let laterBtn = NSButton(title: "Not now", target: self, action: #selector(dismissMove))
+        laterBtn.bezelStyle = .rounded
+
+        let buttons = NSStackView(views: [moveBtn, revealBtn, laterBtn])
+        buttons.orientation = .horizontal
+        buttons.spacing = 8
+
+        let col = NSStackView(views: [title, detail, buttons])
+        col.orientation = .vertical
+        col.alignment = .leading
+        col.spacing = 6
+        col.translatesAutoresizingMaskIntoConstraints = false
+
+        box.addSubview(col)
+        NSLayoutConstraint.activate([
+            col.topAnchor.constraint(equalTo: box.topAnchor, constant: 12),
+            col.leadingAnchor.constraint(equalTo: box.leadingAnchor, constant: 14),
+            col.trailingAnchor.constraint(equalTo: box.trailingAnchor, constant: -14),
+            col.bottomAnchor.constraint(equalTo: box.bottomAnchor, constant: -12),
+        ])
+        return box
+    }
+
     private func buildContent() -> NSView {
         let effect = NSVisualEffectView()
         effect.material = .windowBackground
@@ -120,7 +182,7 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
         title.font = .systemFont(ofSize: 17, weight: .semibold)
         title.textColor = .labelColor
 
-        let subtitle = NSTextField(labelWithString: "Grant permissions below to get started.")
+        let subtitle = NSTextField(wrappingLabelWithString: "Turns your voice into text, 100% on your Mac. Hold Right-Option anywhere to dictate.")
         subtitle.font = .systemFont(ofSize: 13)
         subtitle.textColor = .secondaryLabelColor
 
@@ -136,7 +198,15 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
         doneButton.isEnabled = false
         doneButton.alphaValue = 0.4
 
-        let stack = NSStackView(views: [headerStack, micRow, axRow, modelRow, doneButton])
+        var rows: [NSView] = [headerStack]
+        if InstallLocation.shouldPromptMove {
+            let card = makeMoveCard()
+            moveCard = card
+            rows.append(card)
+        }
+        rows += [micRow, axRow, modelRow, doneButton]
+
+        let stack = NSStackView(views: rows)
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 16
@@ -150,6 +220,9 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
             stack.trailingAnchor.constraint(equalTo: effect.trailingAnchor),
             stack.bottomAnchor.constraint(equalTo: effect.bottomAnchor),
         ])
+        if let moveCard {
+            moveCard.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -56).isActive = true
+        }
         return effect
     }
 }

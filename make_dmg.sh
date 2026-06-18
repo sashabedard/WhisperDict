@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 #
-# Package WhisperDict.app into a distributable .dmg
+# Package WhisperDict.app into a polished, distributable .dmg with a custom
+# window, background image, and drag-to-Applications layout.
+#
+# Uses dmgbuild (writes the layout directly, no Finder automation needed):
+#   python3 -m pip install --user dmgbuild
 #
 # Usage: ./build.sh && ./make_dmg.sh
 #
@@ -8,24 +12,19 @@ set -euo pipefail
 
 NAME="WhisperDict"
 APP="${NAME}.app"
+BG="dmg_background.png"
 
 [[ -d "$APP" ]] || { echo "ERROR: $APP not found -- run ./build.sh first"; exit 1; }
 
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
 DMG="${NAME}-${VERSION}.dmg"
 
-STAGING="$(mktemp -d)"
-echo "-> Staging bundle + Applications alias"
-cp -R "$APP" "$STAGING/"
-ln -s /Applications "$STAGING/Applications"
+echo "-> Generating background"
+[[ -f "$BG" ]] || python3 make_dmg_bg.py
 
-echo "-> Building ${DMG}"
+echo "-> Building $DMG with dmgbuild"
 rm -f "$DMG"
-hdiutil create -volname "$NAME" -srcfolder "$STAGING" -ov -format UDZO "$DMG" >/dev/null
-
-rm -rf "$STAGING"
+python3 -m dmgbuild -s dmg_settings.py -D app="$APP" "$NAME" "$DMG"
 
 echo ""
 echo "OK: built ${DMG} ($(du -h "$DMG" | cut -f1))"
-echo "Opening it shows WhisperDict.app next to an Applications alias;"
-echo "the user drags one onto the other to install."

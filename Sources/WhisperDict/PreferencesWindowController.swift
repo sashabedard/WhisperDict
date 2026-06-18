@@ -50,10 +50,11 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     private let enhanceCaption = NSTextField(wrappingLabelWithString: "")
     private let vocabField    = NSTextField()
     private let profileField  = ProfileTextField()
+    private let snippetsField = ProfileTextField()
 
     convenience init() {
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 540, height: 660),
+            contentRect: NSRect(x: 0, y: 0, width: 540, height: 760),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -200,6 +201,17 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
             ("About you",  profileField),
         ])
 
+        // ── Snippets card (independent of Apple Intelligence) ──
+        snippetsField.stringValue = UserSettings.shared.snippetsRaw
+        snippetsField.textView.delegate = self
+        snippetsField.heightAnchor.constraint(equalToConstant: 56).isActive = true
+
+        let snippetsCard = makeCard(rows: [("Snippets", snippetsField)])
+
+        let snippetsHint = NSTextField(wrappingLabelWithString: "Spoken shortcuts, one per line:  trigger => expansion  (e.g.  my email => you@example.com)")
+        snippetsHint.font = .systemFont(ofSize: 11)
+        snippetsHint.textColor = .tertiaryLabelColor
+
         // ── Footnote ───────────────────────────────────────
         let footnote = NSTextField(wrappingLabelWithString: "Changes apply automatically. Switching the model triggers a one-time reload on the next recording.")
         footnote.font = .systemFont(ofSize: 11)
@@ -207,7 +219,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         footnote.alignment = .left
 
         // ── Layout ─────────────────────────────────────────
-        let stack = NSStackView(views: [header, card, enhanceCard, footnote])
+        let stack = NSStackView(views: [header, card, enhanceCard, snippetsCard, snippetsHint, footnote])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 22
@@ -222,6 +234,8 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
             stack.bottomAnchor.constraint(lessThanOrEqualTo: bg.bottomAnchor),
             card.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
             enhanceCard.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
+            snippetsCard.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
+            snippetsHint.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
             footnote.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
         ])
         return bg
@@ -300,9 +314,13 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     }
 
     func textDidEndEditing(_ notification: Notification) {
-        guard (notification.object as? NSTextView) === profileField.textView else { return }
-        UserSettings.shared.profile = profileField.stringValue
-        NotificationCenter.default.post(name: .enhanceSettingsChanged, object: nil)
+        let tv = notification.object as? NSTextView
+        if tv === profileField.textView {
+            UserSettings.shared.profile = profileField.stringValue
+            NotificationCenter.default.post(name: .enhanceSettingsChanged, object: nil)
+        } else if tv === snippetsField.textView {
+            UserSettings.shared.snippetsRaw = snippetsField.stringValue
+        }
     }
 
     @objc private func styleChanged() {

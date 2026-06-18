@@ -151,6 +151,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     return first ?? text
                 }
             }
+
+            // Snippet expansion runs after Enhance (independent of Apple
+            // Intelligence) so the model can't reword a canned expansion.
+            output = SnippetExpander.expand(output, snippets: UserSettings.shared.snippets)
             let finalText = output   // immutable capture across the actor hop
 
             await MainActor.run { [self] in

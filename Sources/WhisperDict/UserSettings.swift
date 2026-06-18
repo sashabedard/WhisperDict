@@ -33,6 +33,24 @@ final class UserSettings {
         set { UserDefaults.standard.set(newValue, forKey: "vocabulary") }
     }
 
+    /// Raw snippets text, one `trigger => expansion` per line.
+    var snippetsRaw: String {
+        get { UserDefaults.standard.string(forKey: "snippets") ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: "snippets") }
+    }
+
+    /// Parsed snippet pairs (trigger, expansion), splitting each line on the
+    /// first "=>" and dropping blanks.
+    var snippets: [(trigger: String, expansion: String)] {
+        snippetsRaw.split(whereSeparator: \.isNewline).compactMap { line in
+            guard let r = line.range(of: "=>") else { return nil }
+            let t = line[..<r.lowerBound].trimmingCharacters(in: .whitespaces)
+            let e = line[r.upperBound...].trimmingCharacters(in: .whitespaces)
+            guard !t.isEmpty, !e.isEmpty else { return nil }
+            return (t, e)
+        }
+    }
+
     /// Key code of the push-to-talk key (see HotkeyManager.presets). Default 61
     /// is Right-Option.
     var hotkeyKeyCode: Int {

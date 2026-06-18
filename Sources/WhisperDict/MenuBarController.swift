@@ -1,20 +1,25 @@
 import Cocoa
 
 @MainActor
-final class MenuBarController: NSObject {
+final class MenuBarController: NSObject, NSMenuDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let menu = NSMenu()
     private let statusMenuItem = NSMenuItem(title: "Initializing…", action: nil, keyEquivalent: "")
     private let historySectionEnd = NSMenuItem.separator()
+    private let aiNudgeItem = NSMenuItem(title: "✨ Enable Apple Intelligence for Smart cleanup", action: #selector(openAISettings), keyEquivalent: "")
+    private let aiNudgeSeparator = NSMenuItem.separator()
     private var historyItems: [NSMenuItem] = []
     private var onPreferences: (() -> Void)?
 
-    private let historyInsertIndex = 2  // after statusMenuItem + first separator
+    // Two leading items (nudge + its separator) sit above the status line, so
+    // history inserts after: nudge, nudgeSep, status, sep = index 4.
+    private let historyInsertIndex = 4
 
     override init() {
         super.init()
         statusItem.button?.title = "🎙"
         buildMenuOnce()
+        menu.delegate = self
         statusItem.menu = menu
         renderHistory()
     }
@@ -33,6 +38,12 @@ final class MenuBarController: NSObject {
     }
 
     private func buildMenuOnce() {
+        aiNudgeItem.target = self
+        aiNudgeItem.isHidden = true
+        aiNudgeSeparator.isHidden = true
+        menu.addItem(aiNudgeItem)
+        menu.addItem(aiNudgeSeparator)
+
         statusMenuItem.isEnabled = false
         menu.addItem(statusMenuItem)
         menu.addItem(.separator())
@@ -79,5 +90,18 @@ final class MenuBarController: NSObject {
 
     @objc private func openPreferences() {
         onPreferences?()
+    }
+
+    @objc private func openAISettings() {
+        let url = URL(string: "x-apple.systempreferences:com.apple.Siri-Settings.extension")!
+        NSWorkspace.shared.open(url)
+    }
+
+    // NSMenuDelegate — re-evaluate the Apple Intelligence nudge each time the
+    // menu opens, so it disappears the moment the user enables it.
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        let needsAI = Enhancer.availabilityState == .needsAppleIntelligence
+        aiNudgeItem.isHidden = !needsAI
+        aiNudgeSeparator.isHidden = !needsAI
     }
 }

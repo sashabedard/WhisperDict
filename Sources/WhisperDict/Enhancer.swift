@@ -3,6 +3,15 @@ import Foundation
 import FoundationModels
 #endif
 
+/// Why the on-device model is or isn't usable, so the UI can react: nudge the
+/// user when Apple Intelligence is merely off, stay silent when the OS/device
+/// can't run it at all.
+enum EnhanceAvailability {
+    case available             // ready to use
+    case needsAppleIntelligence // macOS 26 but Apple Intelligence is off
+    case unsupported           // macOS < 26, ineligible device, or no SDK
+}
+
 /// Cleanup styles for the on-device Enhance step. Each maps to a system prompt.
 /// `faithful`/`polished`/`email` are user-selectable; `code` is applied
 /// automatically by per-app context when dictating into an editor/terminal.
@@ -34,13 +43,24 @@ private struct CleanedDictation {
 actor Enhancer {
     /// True only when built against the FoundationModels SDK, running on macOS
     /// 26+, with Apple Intelligence enabled and the model ready.
-    static var isAvailable: Bool {
+    static var isAvailable: Bool { availabilityState == .available }
+
+    /// Why Enhance is or isn't available — drives the "enable Apple Intelligence"
+    /// nudge (shown only for `.needsAppleIntelligence`).
+    static var availabilityState: EnhanceAvailability {
         #if canImport(FoundationModels)
         if #available(macOS 26.0, *) {
-            if case .available = SystemLanguageModel.default.availability { return true }
+            switch SystemLanguageModel.default.availability {
+            case .available:
+                return .available
+            case .unavailable(.appleIntelligenceNotEnabled):
+                return .needsAppleIntelligence
+            default:
+                return .unsupported
+            }
         }
         #endif
-        return false
+        return .unsupported
     }
 
     /// Triggers the one-time, process-wide model load so the first real enhance

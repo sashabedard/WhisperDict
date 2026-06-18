@@ -1,11 +1,14 @@
 import Foundation
+#if canImport(FoundationModels)
 import FoundationModels
+#endif
 
 /// Cleanup styles for the on-device Enhance step. Each maps to a system prompt.
 enum EnhanceStyle: String {
     case faithful, polished, email
 }
 
+#if canImport(FoundationModels)
 /// Structured output target. Guided generation forces the model to fill `text`
 /// with a bare string — no preamble, no markdown, no executed instructions.
 @available(macOS 26.0, *)
@@ -14,26 +17,33 @@ private struct CleanedDictation {
     @Guide(description: "The cleaned dictation text only, in the SAME language as the input, with no preamble, no quotes, and no markdown.")
     var text: String
 }
+#endif
 
 /// Wraps Apple's on-device language model to polish a raw transcript.
 ///
-/// The type is intentionally NOT `@available`-annotated so `AppDelegate` can hold
-/// it on a macOS 13 deployment target. The FoundationModels session lives in an
-/// `Any?` box and every use is guarded by `if #available(macOS 26.0, *)`.
+/// All FoundationModels use is doubly gated: `#if canImport(FoundationModels)`
+/// so the app still compiles on SDKs without the module (macOS < 26 toolchains),
+/// and `if #available(macOS 26.0, *)` so it never runs on an older OS. The
+/// session lives in an `Any?` box so the type needs no `@available` annotation,
+/// letting `AppDelegate` hold it on a macOS 13 deployment target.
 actor Enhancer {
     private var session: Any?              // LanguageModelSession on macOS 26+
     private var loadedStyle: EnhanceStyle?
 
-    /// True only on macOS 26+ with Apple Intelligence enabled and the model ready.
+    /// True only when built against the FoundationModels SDK, running on macOS
+    /// 26+, with Apple Intelligence enabled and the model ready.
     static var isAvailable: Bool {
+        #if canImport(FoundationModels)
         if #available(macOS 26.0, *) {
             if case .available = SystemLanguageModel.default.availability { return true }
         }
+        #endif
         return false
     }
 
     /// Pre-loads a session so the first real enhance is warm (~0.4s vs ~0.85s).
     func warmup() async {
+        #if canImport(FoundationModels)
         guard Self.isAvailable else { return }
         if #available(macOS 26.0, *) {
             let style = EnhanceStyle(rawValue: UserSettings.shared.enhanceStyle) ?? .faithful
@@ -41,6 +51,7 @@ actor Enhancer {
             _ = try? await (session as? LanguageModelSession)?
                 .respond(to: "warmup", generating: CleanedDictation.self)
         }
+        #endif
     }
 
     /// Drops the session (e.g. when the feature is disabled).
@@ -51,6 +62,7 @@ actor Enhancer {
 
     /// Returns a cleaned version of `raw`, or `raw` unchanged on any failure.
     func enhance(_ raw: String, style: EnhanceStyle) async -> String {
+        #if canImport(FoundationModels)
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, Self.isAvailable else { return raw }
         if #available(macOS 26.0, *) {
@@ -65,9 +77,11 @@ actor Enhancer {
                 return raw
             }
         }
+        #endif
         return raw
     }
 
+    #if canImport(FoundationModels)
     /// (Re)builds the session when missing or when the style changed. Each
     /// session is bound to a style's system instructions.
     @available(macOS 26.0, *)
@@ -76,6 +90,7 @@ actor Enhancer {
         session = LanguageModelSession(instructions: Self.systemPrompt(for: style))
         loadedStyle = style
     }
+    #endif
 
     private static func systemPrompt(for style: EnhanceStyle) -> String {
         let base = """

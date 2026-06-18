@@ -13,13 +13,14 @@ concurrency:
 jobs:
   build:
     name: Release build (macOS, Apple Silicon)
-    runs-on: macos-15
+    # macOS 26 image: ships the FoundationModels SDK (used by the on-device
+    # Enhance feature) and Xcode 26 / Swift 6.x (needed by swift-jinja ≥ 2.0).
+    # The code also compiles on older SDKs via `#if canImport(FoundationModels)`,
+    # but CI builds on 26 so the full feature is exercised.
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
 
-      # Dependencies (swift-jinja ≥ 2.0) require Swift tools 6.0+. The macos-15
-      # image ships Xcode 16 (Swift 6.x) by default, which satisfies this; the
-      # version is printed below so any image drift is visible in the logs.
       - name: Show toolchain
         run: swift --version
 

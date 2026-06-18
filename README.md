@@ -1,5 +1,7 @@
 # WhisperDict 🎙
 
+[![build](https://github.com/sashabedard/WhisperDict/actions/workflows/build.yml/badge.svg)](https://github.com/sashabedard/WhisperDict/actions/workflows/build.yml)
+
 > **Talk instead of type.** Hold a key, say what you mean, release — your words
 > appear as text in whatever app you're already in. 100% on-device.
 

@@ -80,6 +80,9 @@ feature switches off gracefully.
 
 - macOS 13 (Ventura) or later
 - Apple Silicon recommended (Core ML acceleration)
+- **macOS 26 with Apple Intelligence recommended** — unlocks the on-device
+  Smart cleanup. It's the experience WhisperDict is built around, so turning it
+  on (System Settings → Apple Intelligence) is worth it.
 - On first launch, grant:
   - **Microphone** access (prompted automatically)
   - **Accessibility** access — System Settings → Privacy & Security →

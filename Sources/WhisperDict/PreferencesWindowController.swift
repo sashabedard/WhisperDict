@@ -3,6 +3,7 @@ import Cocoa
 extension Notification.Name {
     static let preferencesChanged = Notification.Name("preferencesChanged")
     static let enhanceSettingsChanged = Notification.Name("enhanceSettingsChanged")
+    static let hotkeyChanged = Notification.Name("hotkeyChanged")
 }
 
 private let languages: [(code: String, label: String)] = [
@@ -41,6 +42,7 @@ private let modelNotes: [String: String] = [
 final class PreferencesWindowController: NSWindowController, NSWindowDelegate, NSTextFieldDelegate, NSTextViewDelegate {
     private let langPopup  = NSPopUpButton()
     private let modelPopup = NSPopUpButton()
+    private let hotkeyPopup = NSPopUpButton()
     private let modelCaption = NSTextField(wrappingLabelWithString: "")
     private let enhanceSwitch = NSSwitch()
     private let perAppSwitch   = NSSwitch()
@@ -51,7 +53,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
 
     convenience init() {
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 540, height: 620),
+            contentRect: NSRect(x: 0, y: 0, width: 540, height: 660),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -136,7 +138,13 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         modelCol.alignment = .leading
         modelCol.spacing = 4
 
+        configurePopup(hotkeyPopup,
+                       items: HotkeyManager.presets.map { $0.label },
+                       selectedIndex: HotkeyManager.presets.firstIndex { $0.keyCode == UInt16(UserSettings.shared.hotkeyKeyCode) } ?? 0,
+                       action: #selector(hotkeyPopupChanged))
+
         let card = makeCard(rows: [
+            ("Shortcut", hotkeyPopup),
             ("Language", langPopup),
             ("Model",    modelCol),
         ])
@@ -300,6 +308,11 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     @objc private func styleChanged() {
         UserSettings.shared.enhanceStyle = enhanceStyles[stylePopup.indexOfSelectedItem].id
         NotificationCenter.default.post(name: .enhanceSettingsChanged, object: nil)
+    }
+
+    @objc private func hotkeyPopupChanged() {
+        UserSettings.shared.hotkeyKeyCode = Int(HotkeyManager.presets[hotkeyPopup.indexOfSelectedItem].keyCode)
+        NotificationCenter.default.post(name: .hotkeyChanged, object: nil)
     }
 
     @objc private func modelChanged() {

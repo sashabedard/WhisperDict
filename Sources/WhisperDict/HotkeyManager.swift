@@ -1,21 +1,42 @@
 import Cocoa
 
 final class HotkeyManager {
+    /// A selectable push-to-talk key. `keyCode` identifies the physical key;
+    /// `flag` is the modifier that key toggles, used to tell press from release.
+    struct Preset {
+        let keyCode: UInt16
+        let flag: NSEvent.ModifierFlags
+        let label: String
+    }
+
+    /// Right-side modifiers only, so the left ones stay free for normal use.
+    static let presets: [Preset] = [
+        Preset(keyCode: 61, flag: .option,  label: "Right Option (⌥)"),
+        Preset(keyCode: 54, flag: .command, label: "Right Command (⌘)"),
+        Preset(keyCode: 62, flag: .control, label: "Right Control (⌃)"),
+        Preset(keyCode: 60, flag: .shift,   label: "Right Shift (⇧)"),
+    ]
+
+    static func preset(for keyCode: Int) -> Preset {
+        presets.first { $0.keyCode == UInt16(keyCode) } ?? presets[0]
+    }
+
     private var monitor: Any?
     private var isPressed = false
     private let onPress: () -> Void
     private let onRelease: () -> Void
-    private let targetKeyCode: UInt16 = 61 // Right-Option
+    private var current: Preset
 
     init(onPress: @escaping () -> Void, onRelease: @escaping () -> Void) {
         self.onPress = onPress
         self.onRelease = onRelease
+        self.current = HotkeyManager.preset(for: UserSettings.shared.hotkeyKeyCode)
     }
 
     func start() {
         monitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
-            guard let self, event.keyCode == self.targetKeyCode else { return }
-            let nowDown = event.modifierFlags.contains(.option)
+            guard let self, event.keyCode == self.current.keyCode else { return }
+            let nowDown = event.modifierFlags.contains(self.current.flag)
             if nowDown && !self.isPressed {
                 self.isPressed = true
                 Task { @MainActor in self.onPress() }
@@ -24,6 +45,14 @@ final class HotkeyManager {
                 Task { @MainActor in self.onRelease() }
             }
         }
+    }
+
+    /// Rebuilds the monitor for the currently-saved key (call after a change).
+    func restart() {
+        if let monitor { NSEvent.removeMonitor(monitor); self.monitor = nil }
+        isPressed = false
+        current = HotkeyManager.preset(for: UserSettings.shared.hotkeyKeyCode)
+        start()
     }
 
     deinit {

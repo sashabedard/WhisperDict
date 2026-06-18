@@ -33,6 +33,13 @@ final class UserSettings {
         set { UserDefaults.standard.set(newValue, forKey: "vocabulary") }
     }
 
+    /// Key code of the push-to-talk key (see HotkeyManager.presets). Default 61
+    /// is Right-Option.
+    var hotkeyKeyCode: Int {
+        get { (UserDefaults.standard.object(forKey: "hotkeyKeyCode") as? Int) ?? 61 }
+        set { UserDefaults.standard.set(newValue, forKey: "hotkeyKeyCode") }
+    }
+
     /// When true, the Enhance style is chosen from the frontmost app (email tone
     /// in mail clients, code style in editors), falling back to `enhanceStyle`.
     var perAppContextEnabled: Bool {

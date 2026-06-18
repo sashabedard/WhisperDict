@@ -37,6 +37,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self, selector: #selector(enhanceSettingsChanged),
             name: .enhanceSettingsChanged, object: nil
         )
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(hotkeyChanged),
+            name: .hotkeyChanged, object: nil
+        )
 
         if UserSettings.shared.hasLaunchedBefore {
             startWarmup()
@@ -60,7 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 if UserSettings.shared.enhanceEnabled, Enhancer.isAvailable {
                     Task { await self.enhancer.warmup() }
                 }
-                menuBar.setStatus("Hold Right-Option to dictate")
+                menuBar.setStatus(dictateHint)
                 onboarding?.setModelStatus(loading: false, ready: true)
             } catch {
                 menuBar.setStatus("Model error: \(error.localizedDescription)", icon: "⚠️")
@@ -78,6 +82,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if UserSettings.shared.enhanceEnabled, Enhancer.isAvailable {
             Task { await enhancer.warmup() }
         }
+    }
+
+    @objc private func hotkeyChanged() {
+        hotkey.restart()
+        menuBar.setStatus(dictateHint)
+    }
+
+    /// "Hold Right Option (⌥) to dictate" — reflects the chosen push-to-talk key.
+    private var dictateHint: String {
+        "Hold \(HotkeyManager.preset(for: UserSettings.shared.hotkeyKeyCode).label) to dictate"
     }
 
     // MARK: - Recording
@@ -151,7 +165,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         self.menuBar.setStatus("⚠️ Enable Accessibility to auto-paste (text copied)", icon: "⚠️")
                     }
                 } else {
-                    self.menuBar.setStatus("Hold Right-Option to dictate")
+                    self.menuBar.setStatus(self.dictateHint)
                 }
                 self.isBusy = false
                 self.overlay.hide()

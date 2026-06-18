@@ -19,13 +19,22 @@ private let languages: [(code: String, label: String)] = [
 private let models: [(id: String, label: String)] = [
     ("openai_whisper-large-v3_turbo_954MB",  "Large v3 Turbo — 954 MB  (recommended)"),
     ("openai_whisper-large-v3_947MB",        "Large v3 — 947 MB"),
-    ("distil-whisper_distil-large-v3_594MB", "Distil Large v3 — 594 MB  (faster)"),
+    ("distil-whisper_distil-large-v3_594MB", "Distil Large v3 — 594 MB"),
+]
+
+/// One-line guidance shown under the model picker so a first-time user knows
+/// which to pick. Distil is English-only — important for non-English users.
+private let modelNotes: [String: String] = [
+    "openai_whisper-large-v3_turbo_954MB":  "Multilingual and fast — recommended for most people.",
+    "openai_whisper-large-v3_947MB":        "Multilingual, the most accurate, but slower.",
+    "distil-whisper_distil-large-v3_594MB": "English only, but the fastest.",
 ]
 
 @MainActor
 final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
     private let langPopup  = NSPopUpButton()
     private let modelPopup = NSPopUpButton()
+    private let modelCaption = NSTextField(wrappingLabelWithString: "")
 
     convenience init() {
         let panel = NSPanel(
@@ -104,9 +113,19 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
                        selectedIndex: models.firstIndex { $0.id == UserSettings.shared.modelName } ?? 0,
                        action: #selector(modelChanged))
 
+        modelCaption.font = .systemFont(ofSize: 11)
+        modelCaption.textColor = .secondaryLabelColor
+        modelCaption.stringValue = modelNote(for: UserSettings.shared.modelName)
+
+        // Keep the caption visually attached under the model popup.
+        let modelCol = NSStackView(views: [modelPopup, modelCaption])
+        modelCol.orientation = .vertical
+        modelCol.alignment = .leading
+        modelCol.spacing = 4
+
         let card = makeCard(rows: [
             ("Language", langPopup),
-            ("Model",    modelPopup),
+            ("Model",    modelCol),
         ])
 
         // ── Footnote ───────────────────────────────────────
@@ -188,9 +207,14 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate {
 
     @objc private func modelChanged() {
         let newModel = models[modelPopup.indexOfSelectedItem].id
+        modelCaption.stringValue = modelNote(for: newModel)
         guard newModel != UserSettings.shared.modelName else { return }
         UserSettings.shared.modelName = newModel
         NotificationCenter.default.post(name: .preferencesChanged, object: nil)
+    }
+
+    private func modelNote(for id: String) -> String {
+        modelNotes[id] ?? ""
     }
 }
 

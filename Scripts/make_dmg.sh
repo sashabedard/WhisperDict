@@ -27,7 +27,7 @@ echo "-> Generating background"
 
 echo "-> Building $DMG with dmgbuild"
 rm -f "$DMG"
-python3 -m dmgbuild -s Scripts/dmg_settings.py -D app="$APP" "$NAME" "$DMG"
+python3 -m dmgbuild -s Scripts/dmg_settings.py -D app="$APP" -D bg="$BG" "$NAME" "$DMG"
 
 echo ""
 echo "OK: built ${DMG} ($(du -h "$DMG" | cut -f1))"

@@ -15,5 +15,10 @@ let package = Package(
             ],
             path: "Sources/WhisperDict"
         ),
+        .testTarget(
+            name: "WhisperDictTests",
+            dependencies: ["WhisperDict"],
+            path: "Tests/WhisperDictTests"
+        ),
     ]
 )

@@ -1,21 +1,45 @@
 # WhisperDict 🎙
 
-A lightweight **push-to-talk dictation** app for macOS that lives in your menu
-bar. Hold a key, speak, release — your words are transcribed **100% on-device**
-and pasted straight into whatever app you're using. No cloud, no account, no
-data leaves your Mac.
+> **Talk instead of type.** Hold a key, say what you mean, release — your words
+> appear as text in whatever app you're already in. 100% on-device.
 
-Powered by [WhisperKit](https://github.com/argmaxinc/WhisperKit) running
-OpenAI's Whisper models locally via Core ML.
+### Say it, don't write it
+
+It's almost always easier to *describe* what you want out loud than to write it.
+The moment you start typing, you stop — you second-guess a word, rewrite the
+sentence, reread it to check it still makes sense, and somewhere in there the
+original idea slips away.
+
+**Speaking keeps the thought whole.** You say it once, the way you'd explain it
+to a person, and it's down on the page before you can talk yourself out of it.
+
+WhisperDict turns that spoken stream into clean text right where your cursor is —
+your editor, your chat, your prompt box, your notes. Hold **Right-Option**, think
+out loud, release. Nothing leaves your Mac.
+
+Powered by [WhisperKit](https://github.com/argmaxinc/WhisperKit) running OpenAI's
+Whisper models locally via Core ML.
 
 ---
+
+## Why people use it
+
+- **Think out loud** — rough out a feature, a reply, or an idea by just talking.
+  No blinking-cursor paralysis, no editing-while-you-draft.
+- **Made for prompting AI** — long, rambling prompts are far faster *said* than
+  typed. Brain-dump the whole context out loud and let the model tidy it up.
+- **Stay in flow** — push-to-talk keeps you in the app you're already using.
+  Zero context switch, zero window juggling.
+- **Yours alone** — every word is transcribed on-device. No cloud, no account,
+  no telemetry, nothing to leak.
 
 ## Features
 
 - **Push-to-talk** — hold the **Right-Option** key to record, release to
   transcribe and auto-paste at the cursor.
-- **Fully local & private** — transcription runs on-device with WhisperKit; the
-  default model is `whisper-large-v3-turbo`.
+- **On-device Whisper** — runs the `whisper-large-v3-turbo` model locally via
+  WhisperKit + Core ML (no network calls, even on first run after the model
+  downloads).
 - **Menu-bar only** — no dock icon, stays out of your way (`🎙`).
 - **History** — the last 8 transcriptions are kept; click one to re-paste it.
 - **Configurable** — pick your language (defaults to French) and Whisper model

@@ -119,7 +119,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
                 .map { "\(Self.appName(for: $0.bundleID)) (\($0.words))" }
                 .joined(separator: " · ")
         }
-        weekBars.data = StatsStore.last7Days()
+        weekBars.data = StatsStore.last30Days().suffix(7).map { $0 }
     }
 
     /// Human-readable app name for a bundle ID, falling back to the ID itself.

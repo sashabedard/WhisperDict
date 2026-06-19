@@ -283,13 +283,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 // Deterministic AX replacement first; fall back to ⌘V paste.
                 var landed = TextReplacer.replaceFocusedSelection(with: result)
                 if !landed {
+                    // The clipboard to restore after the synthetic paste: on the ⌘C
+                    // capture path the user's original was saved before ⌘C; on the AX
+                    // capture path the clipboard was untouched, so snapshot it now
+                    // (before PasteHelper.paste overwrites it).
+                    let toRestore = self.commandUsedClipboard ? savedClip : NSPasteboard.general.string(forType: .string)
                     landed = PasteHelper.paste(result)
-                    // Restore the clipboard only on the ⌘C/⌘V fallback path.
-                    if landed, self.commandUsedClipboard, let savedClip {
+                    if landed, let toRestore {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                             let pb = NSPasteboard.general
                             pb.clearContents()
-                            pb.setString(savedClip, forType: .string)
+                            pb.setString(toRestore, forType: .string)
                         }
                     }
                 }

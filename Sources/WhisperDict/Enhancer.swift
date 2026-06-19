@@ -21,11 +21,13 @@ enum EnhanceStyle: String {
 
 #if canImport(FoundationModels)
 /// Structured output target. Guided generation forces the model to fill `text`
-/// with a bare string — no preamble, no markdown, no executed instructions.
+/// with a bare string — no preamble, no executed instructions. Markdown is
+/// disallowed EXCEPT a plain "- " bullet list, which the session instructions
+/// opt into per-app (otherwise the schema would veto the list formatting).
 @available(macOS 26.0, *)
 @Generable
 private struct CleanedDictation {
-    @Guide(description: "The cleaned dictation text only, in the SAME language as the input, with no preamble, no quotes, and no markdown.")
+    @Guide(description: "The cleaned dictation text only, in the SAME language as the input, with no preamble and no quotes. No markdown, EXCEPT a plain \"- \" bulleted list (one item per line) when the instructions ask for list formatting.")
     var text: String
 }
 #endif
@@ -115,10 +117,16 @@ actor Enhancer {
 
     private static let listInstruction = """
 
-    When the dictation enumerates multiple items, format them as a Markdown bulleted
-    list — one "- " item per line, not a run-on sentence. Reformatting a spoken
-    enumeration as a list is formatting, not paraphrasing; do it in EVERY mode,
-    including faithful.
+
+    LIST FORMATTING (overrides everything above): when the dictation enumerates
+    multiple items, you MUST output them as a "- " bulleted list, one item per
+    line — never a run-on sentence. This is formatting, not paraphrasing; do it
+    in EVERY mode, including faithful.
+    Example — input: "three things apples pears and bananas"
+    Output:
+    - apples
+    - pears
+    - bananas
     """
 
     private static let commandPrompt = """

@@ -1,5 +1,10 @@
 import WhisperKit
 
+struct Transcription {
+    let text: String
+    let language: String
+}
+
 actor Transcriber {
     private var pipe: WhisperKit?
     private var loadedModel = ""
@@ -36,11 +41,11 @@ actor Transcriber {
         } ?? "en"
     }
 
-    func transcribe(_ audio: [Float]) async -> String {
-        guard audio.count > 3_200 else { return "" }
+    func transcribe(_ audio: [Float]) async -> Transcription {
+        guard audio.count > 3_200 else { return Transcription(text: "", language: "") }
         do {
             try await warmup()
-            guard let pipe else { return "" }
+            guard let pipe else { return Transcription(text: "", language: "") }
             let setting = UserSettings.shared.language
             let language = await resolveLanguage(setting, audio: audio, pipe: pipe)
             let options = DecodingOptions(
@@ -51,11 +56,12 @@ actor Transcriber {
                 detectLanguage: false         // we resolve the language ourselves
             )
             let results = try await pipe.transcribe(audioArray: audio, decodeOptions: options)
-            return results.map { $0.text }.joined(separator: " ")
+            let text = results.map { $0.text }.joined(separator: " ")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
+            return Transcription(text: text, language: language)
         } catch {
             print("WhisperKit error: \(error)")
-            return ""
+            return Transcription(text: "", language: "")
         }
     }
 }

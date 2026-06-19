@@ -154,15 +154,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let bundleID = pendingBundleID
 
         Task.detached { [self] in
-            let transcriptionTask = Task<String, Never> {
+            let transcriptionTask = Task<Transcription, Never> {
                 await self.transcriber.transcribe(audio)
             }
             let timeoutTask = Task {
                 try? await Task.sleep(nanoseconds: 30_000_000_000)
                 transcriptionTask.cancel()
             }
-            let text = await transcriptionTask.value
+            let transcription = await transcriptionTask.value
             timeoutTask.cancel()
+            let text = transcription.text
 
             // Optional on-device cleanup. Races the LLM against a 10s timeout;
             // on timeout or any failure it falls back to the raw transcript.
@@ -262,7 +263,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let savedClip = savedClipboard
 
         Task.detached { [self] in
-            let instruction = await self.transcriber.transcribe(audio)
+            let instruction = await self.transcriber.transcribe(audio).text
             let target = (selection?.isEmpty == false) ? selection! : fallback
 
             guard !instruction.isEmpty, !target.isEmpty else {

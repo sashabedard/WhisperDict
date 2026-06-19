@@ -48,6 +48,7 @@ final class AudioRecorder {
     private func setUpIfNeeded() {
         guard !isSetUp else { return }
         let input = engine.inputNode
+        applyInputDevice()   // pin the chosen device (if any) before the format is read
         let inputFormat = input.outputFormat(forBus: 0)
         guard inputFormat.sampleRate > 0,
               let conv = AVAudioConverter(from: inputFormat, to: outputFormat) else { return }
@@ -69,6 +70,30 @@ final class AudioRecorder {
             engine.prepare()
             try? engine.start()
         }
+    }
+
+    /// Pins the engine's input to the user's chosen device. Empty UID or an
+    /// unresolved (unplugged) device leaves the engine on the system default.
+    /// Must run while the engine is stopped — the converter is built for this
+    /// device's format in setUpIfNeeded().
+    private func applyInputDevice() {
+        let uid = UserSettings.shared.inputDeviceUID
+        guard !uid.isEmpty,
+              let deviceID = AudioDevices.deviceID(forUID: uid),
+              let audioUnit = engine.inputNode.audioUnit else { return }
+        var device = deviceID
+        AudioUnitSetProperty(audioUnit,
+                             kAudioOutputUnitProperty_CurrentDevice,
+                             kAudioUnitScope_Global,
+                             0,
+                             &device,
+                             UInt32(MemoryLayout<AudioDeviceID>.size))
+    }
+
+    /// Re-point capture at the currently-chosen input device. Reuses rebuild()
+    /// so the tap and converter are torn down and recreated for the new format.
+    func setInputDevice() {
+        rebuild()
     }
 
     func start() throws {

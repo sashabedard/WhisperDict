@@ -151,8 +151,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     : userStyle
                 let vocab = UserSettings.shared.vocabularyTerms
                 let profile = UserSettings.shared.profile
+                let formatLists = AppContext.supportsRichLists(bundleID: bundleID)
                 output = await withTaskGroup(of: String?.self) { group in
-                    group.addTask { await self.enhancer.enhance(text, style: style, vocabulary: vocab, profile: profile) }
+                    group.addTask { await self.enhancer.enhance(text, style: style, vocabulary: vocab, profile: profile, formatLists: formatLists) }
                     group.addTask { try? await Task.sleep(nanoseconds: 10_000_000_000); return nil }
                     let first = await group.next() ?? nil
                     group.cancelAll()

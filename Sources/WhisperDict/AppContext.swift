@@ -29,4 +29,14 @@ enum AppContext {
         "com.tinyspeck.slackmacgap", "com.apple.mobilesms", "net.whatsapp.whatsapp",
         "com.hnc.discord", "ru.keepcoder.telegram", "com.facebook.messenger",
     ]
+    private static let notes = [
+        "notion.id", "net.shinyfrog.bear", "md.obsidian", "com.apple.notes",
+    ]
+
+    /// True when the frontmost app renders `- ` bullet lists usefully (editors,
+    /// note apps, chat, mail) rather than single-line plain-text fields.
+    static func supportsRichLists(bundleID: String?) -> Bool {
+        guard let id = bundleID?.lowercased() else { return false }
+        return (email + code + casual + notes).contains(where: id.contains)
+    }
 }

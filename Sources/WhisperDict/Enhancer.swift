@@ -78,7 +78,7 @@ actor Enhancer {
     /// Returns a cleaned version of `raw`, or `raw` unchanged on any failure.
     /// `vocabulary` is an optional glossary to spell exactly; `profile` is an
     /// optional free-form "about you" used as context (never echoed).
-    func enhance(_ raw: String, style: EnhanceStyle, vocabulary: [String] = [], profile: String = "") async -> String {
+    func enhance(_ raw: String, style: EnhanceStyle, vocabulary: [String] = [], profile: String = "", formatLists: Bool = false) async -> String {
         #if canImport(FoundationModels)
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, Self.isAvailable else { return raw }
@@ -91,6 +91,9 @@ actor Enhancer {
             }
             if !vocabulary.isEmpty {
                 prompt += "Known terms — spell these exactly when they occur: \(vocabulary.joined(separator: ", ")).\n"
+            }
+            if formatLists {
+                prompt += "If the dictation enumerates multiple items, output them as a Markdown bulleted list — one \"- \" item per line — instead of a run-on sentence.\n"
             }
             prompt += "Clean this dictation:\n<dictation>\n\(trimmed)\n</dictation>"
             do {

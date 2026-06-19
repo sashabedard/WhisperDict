@@ -26,24 +26,27 @@ Whisper models locally via Core ML.
 
 ## Speak messy, paste clean
 
-Real speech is full of "um", restarts, and "no wait, I meant…". WhisperDict can
-**clean it up as you go** — on-device — so what lands at your cursor reads like
+Real speech is full of "um"s, "you know"s, and false starts. WhisperDict
+**cleans it up as you go** — on-device — so what lands at your cursor reads like
 you wrote it, not like you mumbled it:
 
 ```
-You say:   "um so basically i want to uh add a function that takes a user id
-            and uh returns their profile no wait it should return their email"
+You say:   "um so i uh basically want to like ship this feature today you know"
 
-You get:   "So basically I want to add a function that takes a user id and
-            returns their email address."
+You get:   "So I basically want to ship this feature today."
 ```
 
-Fillers gone, punctuation fixed, and the mid-sentence correction resolved — and
-it still **never leaves your Mac**. Pick a style in Preferences:
+Fillers gone, punctuation and capitalization fixed — and it **never leaves your
+Mac**. Pick a style in Preferences:
 
 - **Faithful** — clean only, keep your exact words *(default)*
 - **Polished** — tighten and rephrase for clarity
 - **Email** — rewrite in a professional tone
+
+It will also *try* to resolve mid-sentence corrections ("no wait, I meant…") and
+format spoken enumerations as bullet lists. These need real restructuring, which
+is at the edge of what a small on-device model does reliably — so treat them as
+**best-effort**, not guaranteed.
 
 This runs on Apple's on-device model, so it needs **macOS 26 + Apple
 Intelligence**. Without them, WhisperDict simply pastes the raw transcript — the
@@ -70,8 +73,9 @@ feature switches off gracefully.
   WhisperKit + Core ML (no network calls, even on first run after the model
   downloads).
 - **Smart cleanup (on-device AI)** — optionally polishes each transcript: drops
-  "um/uh", fixes punctuation, and resolves mid-sentence corrections, in Faithful,
-  Polished, or Email style. Runs on Apple's on-device model — still 100% private.
+  "um/uh", fixes punctuation and capitalization, in Faithful, Polished, or Email
+  style (and *best-effort* corrections/lists). Runs on Apple's on-device model —
+  still 100% private.
   *(Requires macOS 26 + Apple Intelligence; off-by-default-gracefully otherwise.)*
 - **Menu-bar only** — no dock icon, stays out of your way (`🎙`).
 - **History** — the last 8 transcriptions are kept; click one to re-paste it.

@@ -186,6 +186,12 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
             saveBtn.bottomAnchor.constraint(equalTo: bg.bottomAnchor, constant: -20),
         ])
 
+        // Fixed content size so the window keeps the same dimensions on every tab
+        // (otherwise it auto-sizes to each tab's content — wide for General's popups,
+        // narrow for Enhance's switches).
+        bg.widthAnchor.constraint(equalToConstant: 660).isActive = true
+        bg.heightAnchor.constraint(equalToConstant: 540).isActive = true
+
         selectTab(0)
         return bg
     }

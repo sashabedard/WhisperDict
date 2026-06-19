@@ -13,6 +13,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let transcriber = Transcriber()
     private let enhancer    = Enhancer()
     private let overlay     = RecordingOverlayController()
+    private enum Activity { case idle, dictation, command }
+    private var activity: Activity = .idle
     private var isBusy  = false
     private var isReady = false
     private var pendingBundleID: String?   // frontmost app captured at record time
@@ -126,6 +128,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startRecording() {
         guard isReady, !isBusy else { return }
         isBusy = true
+        activity = .dictation
         // Capture the target app now, before our overlay appears.
         pendingBundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
         do {
@@ -136,12 +139,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } catch {
             menuBar.setStatus("Mic error: \(error.localizedDescription)", icon: "⚠️")
             isBusy = false
+            activity = .idle
             overlay.hide()
         }
     }
 
     private func stopAndTranscribe() {
-        guard isBusy else { return }
+        guard activity == .dictation else { return }
         let audio = recorder.stop()
         overlay.enterSpinner()
         menuBar.setStatus("Transcribing…", icon: "⏳")
@@ -208,6 +212,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.menuBar.setStatus(self.dictateHint)
                 }
                 self.isBusy = false
+                self.activity = .idle
                 self.overlay.hide()
             }
         }
@@ -220,6 +225,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard UserSettings.shared.commandHotkeyKeyCode != UserSettings.shared.hotkeyKeyCode else { return }
         guard isReady, !isBusy, Enhancer.isAvailable else { return }
         isBusy = true
+        activity = .command
         savedClipboard = NSPasteboard.general.string(forType: .string)
         commandSelection = PasteHelper.copySelection()
         do {
@@ -230,12 +236,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } catch {
             menuBar.setStatus("Mic error: \(error.localizedDescription)", icon: "⚠️")
             isBusy = false
+            activity = .idle
             overlay.hide()
         }
     }
 
     private func stopAndRunCommand() {
-        guard isBusy else { return }
+        guard activity == .command else { return }
         let audio = recorder.stop()
         overlay.enterSpinner()
         menuBar.setStatus("Running command…", icon: "✨")
@@ -252,6 +259,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 await MainActor.run { [self] in
                     self.menuBar.setStatus(target.isEmpty ? "Select text first" : self.dictateHint)
                     self.isBusy = false
+                    self.activity = .idle
                     self.overlay.hide()
                 }
                 return
@@ -263,9 +271,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 let pasted = PasteHelper.paste(result)
                 if pasted {
                     self.lastDictation = result
-                    // Restore the user's clipboard after the synthetic paste consumes it.
+                    // Heuristic delay to let the paste land before restoring the
+                    // user's clipboard; 500 ms accommodates slow/large target fields.
                     if let savedClip {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                             let pb = NSPasteboard.general
                             pb.clearContents()
                             pb.setString(savedClip, forType: .string)
@@ -276,6 +285,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.menuBar.setStatus("⚠️ Enable Accessibility to auto-paste (text copied)", icon: "⚠️")
                 }
                 self.isBusy = false
+                self.activity = .idle
                 self.overlay.hide()
             }
         }

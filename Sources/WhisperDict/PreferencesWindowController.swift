@@ -338,9 +338,35 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
 
         let commandCol = tabColumn(commandHotkeyPopup, caption: commandHotkeyCaption)
 
-        return makeCard(rows: [
+        let card = makeCard(rows: [
             ("Command key", commandCol),
         ])
+
+        let examplesTitle = NSTextField(labelWithString: "Try saying, while holding the command key with text selected:")
+        examplesTitle.font = .systemFont(ofSize: 11)
+        examplesTitle.textColor = .secondaryLabelColor
+
+        let examples = NSTextField(wrappingLabelWithString:
+            "\u{201C}rends \u{00E7}a plus formel\u{201D}   \u{00B7}   \u{201C}traduis en anglais\u{201D}   \u{00B7}   \u{201C}corrige l\u{2019}orthographe\u{201D}\n\u{201C}r\u{00E9}sume\u{201D}   \u{00B7}   \u{201C}rends \u{00E7}a plus court\u{201D}   \u{00B7}   \u{201C}make this a bullet list\u{201D}")
+        examples.font = .systemFont(ofSize: 12)
+        examples.textColor = .labelColor
+
+        let note = NSTextField(wrappingLabelWithString:
+            "Works best in native apps (TextEdit, Mail, Notes). In some web/Electron apps (Slack, VS Code) the edit is pasted rather than replaced.")
+        note.font = .systemFont(ofSize: 11)
+        note.textColor = .tertiaryLabelColor
+
+        let examplesCard = makeCard(rows: [("Examples", examples)])
+
+        let stack = NSStackView(views: [card, examplesTitle, examplesCard, note])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 10
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        for v in stack.arrangedSubviews {
+            v.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        }
+        return stack
     }
 
     private func buildSnippetsTab() -> NSView {

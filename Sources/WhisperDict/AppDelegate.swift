@@ -255,17 +255,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 let pasted = PasteHelper.paste(result)
                 if pasted {
                     self.lastDictation = result
+                    // Restore the user's clipboard after the synthetic paste consumes it.
+                    if let savedClip {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                            let pb = NSPasteboard.general
+                            pb.clearContents()
+                            pb.setString(savedClip, forType: .string)
+                        }
+                    }
                     self.menuBar.setStatus("✓ edited")
                 } else {
                     self.menuBar.setStatus("⚠️ Enable Accessibility to auto-paste (text copied)", icon: "⚠️")
-                }
-                // Restore the user's clipboard after the synthetic paste consumes it.
-                if let savedClip {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        let pb = NSPasteboard.general
-                        pb.clearContents()
-                        pb.setString(savedClip, forType: .string)
-                    }
                 }
                 self.isBusy = false
                 self.overlay.hide()

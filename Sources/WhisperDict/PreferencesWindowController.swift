@@ -102,7 +102,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         inputPopup.removeAllItems()
         inputPopup.addItems(withTitles: mic.titles)
         inputPopup.selectItem(at: mic.index)
-        statsDashboard.refresh()
+        self.refreshStats()
     }
 
     private func refreshStats() {
@@ -296,7 +296,9 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         profileField.stringValue = UserSettings.shared.profile
         profileField.setEnabled(available && UserSettings.shared.enhanceEnabled)
         profileField.textView.delegate = self
-        profileField.heightAnchor.constraint(equalToConstant: 60).isActive = true
+        if profileField.constraints.filter({ $0.firstAttribute == .height }).isEmpty {
+            profileField.heightAnchor.constraint(equalToConstant: 60).isActive = true
+        }
 
         return makeCard(rows: [
             ("Enhance",    enhanceSwitch),
@@ -327,7 +329,9 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     private func buildSnippetsTab() -> NSView {
         snippetsField.stringValue = UserSettings.shared.snippetsRaw
         snippetsField.textView.delegate = self
-        snippetsField.heightAnchor.constraint(equalToConstant: 80).isActive = true
+        if snippetsField.constraints.filter({ $0.firstAttribute == .height }).isEmpty {
+            snippetsField.heightAnchor.constraint(equalToConstant: 80).isActive = true
+        }
 
         let card = makeCard(rows: [("Snippets", snippetsField)])
 

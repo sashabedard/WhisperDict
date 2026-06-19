@@ -158,6 +158,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     group.cancelAll()
                     return first ?? text
                 }
+            } else if !text.isEmpty {
+                // Enhance is off/unavailable: guarantee fillers are still removed.
+                output = TextCleanup.stripFillers(text, language: UserSettings.shared.language)
             }
 
             // Snippet expansion runs after Enhance (independent of Apple

@@ -67,6 +67,8 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     private var tabButtons: [NSButton] = []
     private var contentContainer = NSView()
     private var selectedTab = 0
+    private var tabViewCache: [Int: NSView] = [:]
+    private var saveButton: NSButton?
 
     convenience init() {
         let panel = NSPanel(
@@ -162,6 +164,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         saveBtn.bezelStyle = .rounded
         saveBtn.keyEquivalent = "\r"
         saveBtn.translatesAutoresizingMaskIntoConstraints = false
+        saveButton = saveBtn
 
         // ── Layout ─────────────────────────────────────────
         bg.addSubview(sidebar)
@@ -197,15 +200,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
             btn.state = i == index ? .on : .off
         }
         contentContainer.subviews.forEach { $0.removeFromSuperview() }
-        let tabView: NSView
-        switch index {
-        case 0: tabView = buildGeneralTab()
-        case 1: tabView = buildEnhanceTab()
-        case 2: tabView = buildCommandsTab()
-        case 3: tabView = buildSnippetsTab()
-        case 4: tabView = buildStatsTab()
-        default: tabView = NSView()
-        }
+        let tabView = cachedTab(index)
         tabView.translatesAutoresizingMaskIntoConstraints = false
         contentContainer.addSubview(tabView)
         NSLayoutConstraint.activate([
@@ -214,10 +209,32 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
             tabView.trailingAnchor.constraint(equalTo: contentContainer.trailingAnchor),
             tabView.bottomAnchor.constraint(lessThanOrEqualTo: contentContainer.bottomAnchor),
         ])
+        if index == 4 { statsDashboard.refresh() }
+    }
+
+    private func cachedTab(_ index: Int) -> NSView {
+        if let cached = tabViewCache[index] { return cached }
+        let view: NSView
+        switch index {
+        case 0: view = buildGeneralTab()
+        case 1: view = buildEnhanceTab()
+        case 2: view = buildCommandsTab()
+        case 3: view = buildSnippetsTab()
+        case 4: view = buildStatsTab()
+        default: view = NSView()
+        }
+        tabViewCache[index] = view
+        return view
     }
 
     @objc private func saveClicked() {
-        window?.close()
+        guard let save = saveButton else { return }
+        save.title = "Saved ✓"
+        save.isEnabled = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak save] in
+            save?.title = "Save"
+            save?.isEnabled = true
+        }
     }
 
     // MARK: - Tab Builders

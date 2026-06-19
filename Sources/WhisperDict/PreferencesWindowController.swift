@@ -379,7 +379,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         snippetsField.stringValue = UserSettings.shared.snippetsRaw
         snippetsField.textView.delegate = self
         if snippetsField.constraints.filter({ $0.firstAttribute == .height }).isEmpty {
-            snippetsField.heightAnchor.constraint(equalToConstant: 80).isActive = true
+            snippetsField.heightAnchor.constraint(equalToConstant: 120).isActive = true
         }
 
         let card = makeCard(rows: [("Snippets", snippetsField)])

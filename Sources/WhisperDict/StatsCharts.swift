@@ -79,7 +79,12 @@ final class DonutView: NSView {
     private let palette: [NSColor] = [.controlAccentColor, .systemTeal, .systemGray]
 
     override func draw(_ dirtyRect: NSRect) {
-        guard !segments.isEmpty else { return }
+        guard !segments.isEmpty else {
+            ("—" as NSString).draw(
+                at: NSPoint(x: 4, y: bounds.midY - 8),
+                withAttributes: [.font: NSFont.systemFont(ofSize: 11), .foregroundColor: NSColor.tertiaryLabelColor])
+            return
+        }
         let total = max(segments.reduce(0) { $0 + $1.value }, 1)
         let ringD: CGFloat = 80
         let center = NSPoint(x: 4 + ringD / 2, y: bounds.midY)
@@ -135,39 +140,60 @@ final class HBarListView: NSView {
 
     private func rebuild() {
         stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        guard !rows.isEmpty else {
+            let empty = NSTextField(labelWithString: "—")
+            empty.font = .systemFont(ofSize: 11)
+            empty.textColor = .tertiaryLabelColor
+            stack.addArrangedSubview(empty)
+            return
+        }
         let maxV = max(rows.map { $0.value }.max() ?? 0, 1)
+        let useIcons = !icons.isEmpty
         for (i, row) in rows.enumerated() {
-            let label = NSTextField(labelWithString: row.label)
-            label.font = .systemFont(ofSize: 11)
-            label.textColor = .labelColor
-            label.lineBreakMode = .byTruncatingTail
-            label.setContentHuggingPriority(.defaultLow, for: .horizontal)
-
-            let value = NSTextField(labelWithString: "\(row.value)")
-            value.font = .systemFont(ofSize: 11, weight: .medium)
-            value.textColor = .secondaryLabelColor
-
-            let bar = BarFill()
-            bar.fraction = CGFloat(row.value) / CGFloat(maxV)
-            bar.translatesAutoresizingMaskIntoConstraints = false
-            bar.heightAnchor.constraint(equalToConstant: 6).isActive = true
-            bar.widthAnchor.constraint(equalToConstant: 64).isActive = true
-
             var views: [NSView] = []
-            if i < icons.count, let img = icons[i] {
+
+            // Fixed-width icon + label columns so every bar starts at the same x.
+            if useIcons {
                 let iv = NSImageView()
-                iv.image = img
+                if i < icons.count, let img = icons[i] { iv.image = img }
                 iv.translatesAutoresizingMaskIntoConstraints = false
                 iv.widthAnchor.constraint(equalToConstant: 16).isActive = true
                 iv.heightAnchor.constraint(equalToConstant: 16).isActive = true
                 views.append(iv)
             }
-            views.append(contentsOf: [label, bar, value])
+
+            let label = NSTextField(labelWithString: row.label)
+            label.font = .systemFont(ofSize: 11)
+            label.textColor = .labelColor
+            label.lineBreakMode = .byTruncatingTail
+            label.translatesAutoresizingMaskIntoConstraints = false
+            label.widthAnchor.constraint(equalToConstant: 84).isActive = true
+            views.append(label)
+
+            // The bar fills the remaining width, so every row's track is the same
+            // length and the accent fill is proportional/comparable.
+            let bar = BarFill()
+            bar.fraction = CGFloat(row.value) / CGFloat(maxV)
+            bar.translatesAutoresizingMaskIntoConstraints = false
+            bar.heightAnchor.constraint(equalToConstant: 6).isActive = true
+            bar.setContentHuggingPriority(.defaultLow, for: .horizontal)
+            bar.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+            views.append(bar)
+
+            let value = NSTextField(labelWithString: "\(row.value)")
+            value.font = .systemFont(ofSize: 11, weight: .medium)
+            value.textColor = .secondaryLabelColor
+            value.alignment = .right
+            value.translatesAutoresizingMaskIntoConstraints = false
+            value.widthAnchor.constraint(equalToConstant: 34).isActive = true
+            value.setContentHuggingPriority(.required, for: .horizontal)
+            views.append(value)
 
             let rowStack = NSStackView(views: views)
             rowStack.orientation = .horizontal
             rowStack.alignment = .centerY
             rowStack.spacing = 8
+            rowStack.distribution = .fill
             stack.addArrangedSubview(rowStack)
             rowStack.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         }

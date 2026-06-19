@@ -29,7 +29,7 @@ final class StatsDashboardView: NSView {
         wpmTile.value = "\(StatsStore.wordsPerMinute())"
         savedTile.value = "\(StatsStore.minutesSaved())"
         trend.data = StatsStore.last30Days().map { $0.words }
-        donut.segments = StatsStore.topLanguages(limit: 3).map { (label: $0.language.uppercased(), value: $0.count) }
+        donut.segments = StatsStore.topLanguages(limit: 3).map { (label: Self.languageName($0.language), value: $0.count) }
         let topApps = StatsStore.topApps(limit: 4)
         apps.rows = topApps.map { (label: Self.appName(for: $0.bundleID), value: $0.words) }
         apps.icons = topApps.map { Self.appIcon(for: $0.bundleID) }
@@ -49,16 +49,18 @@ final class StatsDashboardView: NSView {
         let langCol = labeledColumn("Languages", donut)
         let appsCol = labeledColumn("Top apps", apps)
         let cmdCol = labeledColumn("Commands", commands)
-        let columns = NSStackView(views: [langCol, appsCol, cmdCol])
-        columns.orientation = .horizontal
-        columns.distribution = .fillEqually
-        columns.alignment = .top
-        columns.spacing = 16
+        // Languages gets its own full-width row; the two lists sit side by side
+        // below it so each has room for aligned icon/label/bar/value columns.
+        let lists = NSStackView(views: [appsCol, cmdCol])
+        lists.orientation = .horizontal
+        lists.distribution = .fillEqually
+        lists.alignment = .top
+        lists.spacing = 24
 
         emptyLabel.font = .systemFont(ofSize: 12)
         emptyLabel.textColor = .secondaryLabelColor
 
-        let root = NSStackView(views: [tiles, trendTitle, trend, columns, emptyLabel])
+        let root = NSStackView(views: [tiles, trendTitle, trend, langCol, lists, emptyLabel])
         root.orientation = .vertical
         root.alignment = .leading
         root.spacing = 18
@@ -71,7 +73,8 @@ final class StatsDashboardView: NSView {
             root.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor),
             tiles.widthAnchor.constraint(equalTo: root.widthAnchor),
             trend.widthAnchor.constraint(equalTo: root.widthAnchor),
-            columns.widthAnchor.constraint(equalTo: root.widthAnchor),
+            langCol.widthAnchor.constraint(equalTo: root.widthAnchor),
+            lists.widthAnchor.constraint(equalTo: root.widthAnchor),
         ])
     }
 
@@ -83,10 +86,12 @@ final class StatsDashboardView: NSView {
     }
 
     private func labeledColumn(_ title: String, _ content: NSView) -> NSView {
+        content.translatesAutoresizingMaskIntoConstraints = false
         let col = NSStackView(views: [sectionTitle(title), content])
         col.orientation = .vertical
         col.alignment = .leading
         col.spacing = 8
+        content.widthAnchor.constraint(equalTo: col.widthAnchor).isActive = true
         return col
     }
 
@@ -99,5 +104,9 @@ final class StatsDashboardView: NSView {
         let icon = NSWorkspace.shared.icon(forFile: url.path)
         icon.size = NSSize(width: 16, height: 16)
         return icon
+    }
+    /// Localized language name for a code ("fr" → "Français"), capitalized.
+    private static func languageName(_ code: String) -> String {
+        Locale.current.localizedString(forLanguageCode: code)?.capitalized ?? code.uppercased()
     }
 }

@@ -34,12 +34,29 @@ cp Info.plist "$APP/Contents/Info.plist"
 ICON="Scripts/assets/AppIcon.icns"
 [[ -f "$ICON" ]] && cp "$ICON" "$APP/Contents/Resources/AppIcon.icns"
 
-# Prefer a stable self-signed identity (./Scripts/setup_signing.sh) so macOS
-# keeps the Accessibility/Microphone grants across rebuilds. Fall back to ad-hoc.
-IDENTITY="WhisperDict Self-Signed"
-if security find-identity -p codesigning 2>/dev/null | grep -q "$IDENTITY"; then
-    echo "→ Signing with '$IDENTITY'…"
-    codesign --force --deep --sign "$IDENTITY" "$APP"
+# Signing strategy, in order of preference:
+#   1. "Developer ID Application" cert  → release builds: hardened runtime +
+#      secure timestamp + entitlements, so the app can be NOTARIZED
+#      (./Scripts/notarize.sh). This is what removes the Gatekeeper warning.
+#   2. "WhisperDict Self-Signed"        → local dev: a stable identity
+#      (./Scripts/setup_signing.sh) so macOS keeps the Accessibility/Microphone
+#      grants across rebuilds.
+#   3. ad-hoc                           → last resort.
+SELF_IDENTITY="WhisperDict Self-Signed"
+ENTITLEMENTS="WhisperDict.entitlements"
+# `|| true` so a no-match grep doesn't trip `set -e`/`pipefail` when no
+# Developer ID cert is installed (the common local-dev case).
+DEVID="$(security find-identity -p codesigning -v 2>/dev/null \
+          | grep -o '"Developer ID Application:[^"]*"' | head -1 | tr -d '"' || true)"
+
+if [[ -n "$DEVID" ]]; then
+    echo "→ Signing with '$DEVID' (hardened runtime + timestamp — notarizable)…"
+    codesign --force --deep --options runtime --timestamp \
+        --entitlements "$ENTITLEMENTS" --sign "$DEVID" "$APP"
+    echo "  Next: ./Scripts/notarize.sh"
+elif security find-identity -p codesigning 2>/dev/null | grep -q "$SELF_IDENTITY"; then
+    echo "→ Signing with '$SELF_IDENTITY' (local dev — not notarizable)…"
+    codesign --force --deep --sign "$SELF_IDENTITY" "$APP"
 else
     echo "→ Ad-hoc signing (run ./Scripts/setup_signing.sh for a stable identity)…"
     codesign --force --deep --sign - "$APP"

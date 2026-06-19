@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!--
+      Hardened runtime (required for notarization) blocks resource access by
+      default. WhisperDict needs the microphone for dictation; that's the only
+      capability gated by an entitlement here.
+
+      Deliberately NOT sandboxed: the global push-to-talk monitor, the
+      Accessibility API (selection read/replace), and synthetic Cmd+V/Cmd+C
+      would all break under App Sandbox. Notarized Developer ID distribution
+      (outside the Mac App Store) does not require the sandbox.
+
+      Accessibility and synthetic key events are granted at runtime via TCC
+      (the user's Accessibility approval), not via an entitlement.
+
+      If notarization ever complains at runtime about loading CoreML/WhisperKit,
+      add:  <key>com.apple.security.cs.disable-library-validation</key><true/>
+      — but try WITHOUT it first; a statically linked SwiftPM binary usually
+      doesn't need it.
+    -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+</dict>
+</plist>

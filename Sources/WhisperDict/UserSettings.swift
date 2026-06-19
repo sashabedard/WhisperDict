@@ -68,6 +68,14 @@ final class UserSettings {
         set { UserDefaults.standard.set(newValue, forKey: "hotkeyKeyCode") }
     }
 
+    /// UID of the chosen input device. Empty string means "follow the macOS
+    /// system default" (the original behavior). Persisted as the stable UID,
+    /// never the ephemeral AudioDeviceID, which is reassigned on replug/reboot.
+    var inputDeviceUID: String {
+        get { UserDefaults.standard.string(forKey: "inputDeviceUID") ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: "inputDeviceUID") }
+    }
+
     /// When true, the Enhance style is chosen from the frontmost app (email tone
     /// in mail clients, code style in editors), falling back to `enhanceStyle`.
     var perAppContextEnabled: Bool {

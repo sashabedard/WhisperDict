@@ -69,10 +69,10 @@ final class UserSettings {
     }
 
     /// Key code of the voice-command push-to-talk key (see HotkeyManager.presets).
-    /// Default 54 is Right-Command. If equal to hotkeyKeyCode, command mode is
+    /// Default 62 is Right-Control. If equal to hotkeyKeyCode, command mode is
     /// treated as disabled.
     var commandHotkeyKeyCode: Int {
-        get { (UserDefaults.standard.object(forKey: "commandHotkeyKeyCode") as? Int) ?? 54 }
+        get { (UserDefaults.standard.object(forKey: "commandHotkeyKeyCode") as? Int) ?? 62 }
         set { UserDefaults.standard.set(newValue, forKey: "commandHotkeyKeyCode") }
     }
 

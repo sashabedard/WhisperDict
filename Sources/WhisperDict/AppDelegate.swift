@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var lastDictation = ""
     private var commandSelection: String?
     private var savedClipboard: String?
+    private var commandUsedClipboard = false
     private let recorder    = AudioRecorder()
     private let transcriber = Transcriber()
     private let enhancer    = Enhancer()
@@ -226,8 +227,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard isReady, !isBusy, Enhancer.isAvailable else { return }
         isBusy = true
         activity = .command
-        savedClipboard = NSPasteboard.general.string(forType: .string)
-        commandSelection = PasteHelper.copySelection()
+        // Prefer the Accessibility API (deterministic, no clipboard). Fall back to a
+        // synthetic ⌘C copy only when AX can't read the selection (e.g. Electron apps).
+        if let sel = TextReplacer.focusedSelection() {
+            commandSelection = sel
+            savedClipboard = nil
+            commandUsedClipboard = false
+        } else {
+            savedClipboard = NSPasteboard.general.string(forType: .string)
+            commandSelection = PasteHelper.copySelection()
+            commandUsedClipboard = true
+        }
         do {
             try recorder.start()
             recorder.onBands = { [weak self] bands in self?.overlay.setBands(bands) }
@@ -268,18 +278,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let result = await self.enhancer.runCommand(instruction: instruction, on: target)
 
             await MainActor.run { [self] in
-                let pasted = PasteHelper.paste(result)
-                if pasted {
-                    self.lastDictation = result
-                    // Heuristic delay to let the paste land before restoring the
-                    // user's clipboard; 500 ms accommodates slow/large target fields.
-                    if let savedClip {
+                // Deterministic AX replacement first; fall back to ⌘V paste.
+                var landed = TextReplacer.replaceFocusedSelection(with: result)
+                if !landed {
+                    landed = PasteHelper.paste(result)
+                    // Restore the clipboard only on the ⌘C/⌘V fallback path.
+                    if landed, self.commandUsedClipboard, let savedClip {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                             let pb = NSPasteboard.general
                             pb.clearContents()
                             pb.setString(savedClip, forType: .string)
                         }
                     }
+                }
+                if landed {
+                    self.lastDictation = result
                     self.menuBar.setStatus("✓ edited")
                 } else {
                     self.menuBar.setStatus("⚠️ Enable Accessibility to auto-paste (text copied)", icon: "⚠️")

@@ -24,6 +24,3 @@ __pycache__/
 .claude/
 .remember/
 docs/superpowers/
-
-# Tests are kept out of the public release
-Tests/

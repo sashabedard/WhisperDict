@@ -5,7 +5,10 @@ import Foundation
 /// totalDictations for back-compat. Reuses the existing "totalWords" and
 /// "totalDictations" UserDefaults keys, so prior data is preserved.
 enum StatsStore {
-    private static let d = UserDefaults.standard
+    /// Backing store. Production always uses `.standard`; tests inject a
+    /// throwaway suite so they never touch real user data.
+    static var defaults: UserDefaults = .standard
+    private static var d: UserDefaults { defaults }
 
     static func record(words: Int, bundleID: String?, seconds: Double, language: String = "") {
         d.set(totalWords + words, forKey: "totalWords")

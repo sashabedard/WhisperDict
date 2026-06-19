@@ -41,6 +41,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self, selector: #selector(hotkeyChanged),
             name: .hotkeyChanged, object: nil
         )
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(inputDeviceChanged),
+            name: .inputDeviceChanged, object: nil
+        )
 
         if UserSettings.shared.hasLaunchedBefore {
             startWarmup()
@@ -87,6 +91,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func hotkeyChanged() {
         hotkey.restart()
         menuBar.setStatus(dictateHint)
+    }
+
+    @objc private func inputDeviceChanged() {
+        recorder.setInputDevice()
     }
 
     /// "Hold Right Option (⌥) to dictate" — reflects the chosen push-to-talk key.

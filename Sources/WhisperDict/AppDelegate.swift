@@ -201,7 +201,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     StatsStore.record(
                         words: finalText.split(whereSeparator: \.isWhitespace).count,
                         bundleID: bundleID,
-                        seconds: Double(audio.count) / 16_000)
+                        seconds: Double(audio.count) / 16_000,
+                        language: transcription.language)
                     self.menuBar.refreshHistory()
                     if pasted {
                         self.lastDictation = finalText
@@ -294,6 +295,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
                 if landed {
                     self.lastDictation = result
+                    StatsStore.recordCommand(instruction: instruction)
                     self.menuBar.setStatus("✓ edited")
                 } else {
                     self.menuBar.setStatus("⚠️ Enable Accessibility to auto-paste (text copied)", icon: "⚠️")

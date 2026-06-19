@@ -5,6 +5,10 @@ import AVFoundation
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var menuBar: MenuBarController!
     private var hotkey:  HotkeyManager!
+    private var commandHotkey: HotkeyManager!
+    private var lastDictation = ""
+    private var commandSelection: String?
+    private var savedClipboard: String?
     private let recorder    = AudioRecorder()
     private let transcriber = Transcriber()
     private let enhancer    = Enhancer()
@@ -28,6 +32,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onRelease: { [weak self] in self?.stopAndTranscribe() }
         )
         hotkey.start()
+
+        commandHotkey = HotkeyManager(
+            keyCodeProvider: { UserSettings.shared.commandHotkeyKeyCode },
+            onPress:   { [weak self] in self?.startCommand() },
+            onRelease: { [weak self] in self?.stopAndRunCommand() }
+        )
+        commandHotkey.start()
 
         NotificationCenter.default.addObserver(
             self, selector: #selector(preferencesChanged),
@@ -179,6 +190,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                         seconds: Double(audio.count) / 16_000)
                     self.menuBar.refreshHistory()
                     if pasted {
+                        self.lastDictation = finalText
                         let preview = finalText.count <= 48 ? finalText : String(finalText.prefix(45)) + "…"
                         self.menuBar.setStatus("✓ \(preview)")
                     } else {
@@ -186,6 +198,74 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     }
                 } else {
                     self.menuBar.setStatus(self.dictateHint)
+                }
+                self.isBusy = false
+                self.overlay.hide()
+            }
+        }
+    }
+
+    // MARK: - Command mode
+
+    private func startCommand() {
+        // Inert if command mode is unavailable or shares the dictation key.
+        guard UserSettings.shared.commandHotkeyKeyCode != UserSettings.shared.hotkeyKeyCode else { return }
+        guard isReady, !isBusy, Enhancer.isAvailable else { return }
+        isBusy = true
+        savedClipboard = NSPasteboard.general.string(forType: .string)
+        commandSelection = PasteHelper.copySelection()
+        do {
+            try recorder.start()
+            recorder.onBands = { [weak self] bands in self?.overlay.setBands(bands) }
+            overlay.show()
+            menuBar.setStatus("Command…", icon: "🪄")
+        } catch {
+            menuBar.setStatus("Mic error: \(error.localizedDescription)", icon: "⚠️")
+            isBusy = false
+            overlay.hide()
+        }
+    }
+
+    private func stopAndRunCommand() {
+        guard isBusy else { return }
+        let audio = recorder.stop()
+        overlay.enterSpinner()
+        menuBar.setStatus("Running command…", icon: "✨")
+
+        let selection = commandSelection
+        let fallback = lastDictation
+        let savedClip = savedClipboard
+
+        Task.detached { [self] in
+            let instruction = await self.transcriber.transcribe(audio)
+            let target = (selection?.isEmpty == false) ? selection! : fallback
+
+            guard !instruction.isEmpty, !target.isEmpty else {
+                await MainActor.run { [self] in
+                    self.menuBar.setStatus(target.isEmpty ? "Select text first" : self.dictateHint)
+                    self.isBusy = false
+                    self.overlay.hide()
+                }
+                return
+            }
+
+            let result = await self.enhancer.runCommand(instruction: instruction, on: target)
+
+            await MainActor.run { [self] in
+                let pasted = PasteHelper.paste(result)
+                if pasted {
+                    self.lastDictation = result
+                    self.menuBar.setStatus("✓ edited")
+                } else {
+                    self.menuBar.setStatus("⚠️ Enable Accessibility to auto-paste (text copied)", icon: "⚠️")
+                }
+                // Restore the user's clipboard after the synthetic paste consumes it.
+                if let savedClip {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        let pb = NSPasteboard.general
+                        pb.clearContents()
+                        pb.setString(savedClip, forType: .string)
+                    }
                 }
                 self.isBusy = false
                 self.overlay.hide()

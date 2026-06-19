@@ -4,6 +4,7 @@ extension Notification.Name {
     static let preferencesChanged = Notification.Name("preferencesChanged")
     static let enhanceSettingsChanged = Notification.Name("enhanceSettingsChanged")
     static let hotkeyChanged = Notification.Name("hotkeyChanged")
+    static let inputDeviceChanged = Notification.Name("inputDeviceChanged")
 }
 
 private let languages: [(code: String, label: String)] = [
@@ -43,6 +44,9 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     private let langPopup  = NSPopUpButton()
     private let modelPopup = NSPopUpButton()
     private let hotkeyPopup = NSPopUpButton()
+    private let inputPopup = NSPopUpButton()
+    /// Parallel to the popup's items: UID per row; index 0 is "" (system default).
+    private var inputDeviceUIDs: [String] = []
     private let modelCaption = NSTextField(wrappingLabelWithString: "")
     private let enhanceSwitch = NSSwitch()
     private let perAppSwitch   = NSSwitch()
@@ -84,6 +88,10 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
 
     func windowDidBecomeKey(_ notification: Notification) {
         statsLabel.stringValue = statsSummary()
+        let mic = inputItems()
+        inputPopup.removeAllItems()
+        inputPopup.addItems(withTitles: mic.titles)
+        inputPopup.selectItem(at: mic.index)
     }
 
     private func statsSummary() -> String {
@@ -156,10 +164,17 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
                        selectedIndex: HotkeyManager.presets.firstIndex { $0.keyCode == UInt16(UserSettings.shared.hotkeyKeyCode) } ?? 0,
                        action: #selector(hotkeyPopupChanged))
 
+        let mic = inputItems()
+        configurePopup(inputPopup,
+                       items: mic.titles,
+                       selectedIndex: mic.index,
+                       action: #selector(inputDeviceChanged))
+
         let card = makeCard(rows: [
-            ("Shortcut", hotkeyPopup),
-            ("Language", langPopup),
-            ("Model",    modelCol),
+            ("Shortcut",   hotkeyPopup),
+            ("Language",   langPopup),
+            ("Model",      modelCol),
+            ("Microphone", inputPopup),
         ])
 
         // ── Enhancement card ───────────────────────────────
@@ -257,6 +272,16 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
             statsLabel.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
         ])
         return bg
+    }
+
+    /// Recomputes the device list and the parallel `inputDeviceUIDs`, returning
+    /// the popup titles and the index matching the saved UID (0 = system default).
+    private func inputItems() -> (titles: [String], index: Int) {
+        let devices = AudioDevices.inputDevices()
+        inputDeviceUIDs = [""] + devices.map { $0.uid }
+        let titles = ["System Default (follow macOS)"] + devices.map { $0.name }
+        let index = inputDeviceUIDs.firstIndex(of: UserSettings.shared.inputDeviceUID) ?? 0
+        return (titles, index)
     }
 
     private func configurePopup(_ popup: NSPopUpButton, items: [String], selectedIndex: Int, action: Selector) {
@@ -364,6 +389,12 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     @objc private func hotkeyPopupChanged() {
         UserSettings.shared.hotkeyKeyCode = Int(HotkeyManager.presets[hotkeyPopup.indexOfSelectedItem].keyCode)
         NotificationCenter.default.post(name: .hotkeyChanged, object: nil)
+    }
+
+    @objc private func inputDeviceChanged() {
+        let i = inputPopup.indexOfSelectedItem
+        UserSettings.shared.inputDeviceUID = inputDeviceUIDs.indices.contains(i) ? inputDeviceUIDs[i] : ""
+        NotificationCenter.default.post(name: .inputDeviceChanged, object: nil)
     }
 
     @objc private func modelChanged() {

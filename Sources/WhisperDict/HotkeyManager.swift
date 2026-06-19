@@ -23,14 +23,18 @@ final class HotkeyManager {
 
     private var monitor: Any?
     private var isPressed = false
+    private let keyCodeProvider: () -> Int
     private let onPress: () -> Void
     private let onRelease: () -> Void
     private var current: Preset
 
-    init(onPress: @escaping () -> Void, onRelease: @escaping () -> Void) {
+    init(keyCodeProvider: @escaping () -> Int = { UserSettings.shared.hotkeyKeyCode },
+         onPress: @escaping () -> Void,
+         onRelease: @escaping () -> Void) {
+        self.keyCodeProvider = keyCodeProvider
         self.onPress = onPress
         self.onRelease = onRelease
-        self.current = HotkeyManager.preset(for: UserSettings.shared.hotkeyKeyCode)
+        self.current = HotkeyManager.preset(for: keyCodeProvider())
     }
 
     func start() {
@@ -51,7 +55,7 @@ final class HotkeyManager {
     func restart() {
         if let monitor { NSEvent.removeMonitor(monitor); self.monitor = nil }
         isPressed = false
-        current = HotkeyManager.preset(for: UserSettings.shared.hotkeyKeyCode)
+        current = HotkeyManager.preset(for: keyCodeProvider())
         start()
     }
 

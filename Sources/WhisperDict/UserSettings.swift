@@ -68,6 +68,14 @@ final class UserSettings {
         set { UserDefaults.standard.set(newValue, forKey: "hotkeyKeyCode") }
     }
 
+    /// Key code of the voice-command push-to-talk key (see HotkeyManager.presets).
+    /// Default 54 is Right-Command. If equal to hotkeyKeyCode, command mode is
+    /// treated as disabled.
+    var commandHotkeyKeyCode: Int {
+        get { (UserDefaults.standard.object(forKey: "commandHotkeyKeyCode") as? Int) ?? 54 }
+        set { UserDefaults.standard.set(newValue, forKey: "commandHotkeyKeyCode") }
+    }
+
     /// UID of the chosen input device. Empty string means "follow the macOS
     /// system default" (the original behavior). Persisted as the stable UID,
     /// never the ephemeral AudioDeviceID, which is reassigned on replug/reboot.

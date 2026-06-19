@@ -60,6 +60,12 @@ final class AudioRecorder {
     }
 
     private func rebuild() {
+        // Serialize all engine mutations on the main thread so the CoreAudio
+        // config-change callback and the AppDelegate input-device path can't race.
+        if !Thread.isMainThread {
+            DispatchQueue.main.async { [weak self] in self?.rebuild() }
+            return
+        }
         let wasRunning = engine.isRunning
         if isSetUp { engine.inputNode.removeTap(onBus: 0) }
         engine.stop()

@@ -83,7 +83,8 @@ actor Enhancer {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, Self.isAvailable else { return raw }
         if #available(macOS 26.0, *) {
-            let session = LanguageModelSession(instructions: Self.systemPrompt(for: style))
+            let instructions = Self.systemPrompt(for: style) + (formatLists ? Self.listInstruction : "")
+            let session = LanguageModelSession(instructions: instructions)
             var prompt = ""
             let trimmedProfile = profile.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmedProfile.isEmpty {
@@ -91,9 +92,6 @@ actor Enhancer {
             }
             if !vocabulary.isEmpty {
                 prompt += "Known terms — spell these exactly when they occur: \(vocabulary.joined(separator: ", ")).\n"
-            }
-            if formatLists {
-                prompt += "If the dictation enumerates multiple items, output them as a Markdown bulleted list — one \"- \" item per line — instead of a run-on sentence.\n"
             }
             prompt += "Clean this dictation:\n<dictation>\n\(trimmed)\n</dictation>"
             do {
@@ -114,6 +112,14 @@ actor Enhancer {
         #endif
         return raw
     }
+
+    private static let listInstruction = """
+
+    When the dictation enumerates multiple items, format them as a Markdown bulleted
+    list — one "- " item per line, not a run-on sentence. Reformatting a spoken
+    enumeration as a list is formatting, not paraphrasing; do it in EVERY mode,
+    including faithful.
+    """
 
     private static let commandPrompt = """
     You are a text editor. Apply the user's INSTRUCTION to the TEXT and return

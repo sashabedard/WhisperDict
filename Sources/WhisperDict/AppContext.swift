@@ -31,6 +31,7 @@ enum AppContext {
     ]
     private static let notes = [
         "notion.id", "net.shinyfrog.bear", "md.obsidian", "com.apple.notes",
+        "com.apple.textedit",
     ]
 
     /// True when the frontmost app renders `- ` bullet lists usefully (editors,

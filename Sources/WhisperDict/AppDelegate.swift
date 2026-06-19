@@ -53,6 +53,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             name: .hotkeyChanged, object: nil
         )
         NotificationCenter.default.addObserver(
+            self, selector: #selector(commandHotkeyChanged),
+            name: .commandHotkeyChanged, object: nil
+        )
+        NotificationCenter.default.addObserver(
             self, selector: #selector(inputDeviceChanged),
             name: .inputDeviceChanged, object: nil
         )
@@ -102,6 +106,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func hotkeyChanged() {
         hotkey.restart()
         menuBar.setStatus(dictateHint)
+    }
+
+    @objc private func commandHotkeyChanged() {
+        commandHotkey.restart()
     }
 
     @objc private func inputDeviceChanged() {

@@ -4,6 +4,7 @@ extension Notification.Name {
     static let preferencesChanged = Notification.Name("preferencesChanged")
     static let enhanceSettingsChanged = Notification.Name("enhanceSettingsChanged")
     static let hotkeyChanged = Notification.Name("hotkeyChanged")
+    static let commandHotkeyChanged = Notification.Name("commandHotkeyChanged")
     static let inputDeviceChanged = Notification.Name("inputDeviceChanged")
 }
 
@@ -44,6 +45,8 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     private let langPopup  = NSPopUpButton()
     private let modelPopup = NSPopUpButton()
     private let hotkeyPopup = NSPopUpButton()
+    private let commandHotkeyPopup = NSPopUpButton()
+    private let commandHotkeyCaption = NSTextField(wrappingLabelWithString: "")
     private let inputPopup = NSPopUpButton()
     /// Parallel to the popup's items: UID per row; index 0 is "" (system default).
     private var inputDeviceUIDs: [String] = []
@@ -189,6 +192,21 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
                        selectedIndex: HotkeyManager.presets.firstIndex { $0.keyCode == UInt16(UserSettings.shared.hotkeyKeyCode) } ?? 0,
                        action: #selector(hotkeyPopupChanged))
 
+        configurePopup(commandHotkeyPopup,
+                       items: HotkeyManager.presets.map { $0.label },
+                       selectedIndex: HotkeyManager.presets.firstIndex { $0.keyCode == UInt16(UserSettings.shared.commandHotkeyKeyCode) } ?? 1,
+                       action: #selector(commandHotkeyPopupChanged))
+
+        commandHotkeyCaption.font = .systemFont(ofSize: 11)
+        commandHotkeyCaption.textColor = .secondaryLabelColor
+        commandHotkeyCaption.stringValue = commandKeyNote()
+
+        let commandCol = NSStackView(views: [commandHotkeyPopup, commandHotkeyCaption])
+        commandCol.orientation = .vertical
+        commandCol.alignment = .leading
+        commandCol.spacing = 4
+        commandHotkeyCaption.widthAnchor.constraint(equalTo: commandCol.widthAnchor).isActive = true
+
         let mic = inputItems()
         configurePopup(inputPopup,
                        items: mic.titles,
@@ -196,10 +214,11 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
                        action: #selector(inputDeviceChanged))
 
         let card = makeCard(rows: [
-            ("Shortcut",   hotkeyPopup),
-            ("Language",   langPopup),
-            ("Model",      modelCol),
-            ("Microphone", inputPopup),
+            ("Shortcut",    hotkeyPopup),
+            ("Command key", commandCol),
+            ("Language",    langPopup),
+            ("Model",       modelCol),
+            ("Microphone",  inputPopup),
         ])
 
         // ── Enhancement card ───────────────────────────────
@@ -442,6 +461,22 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     @objc private func hotkeyPopupChanged() {
         UserSettings.shared.hotkeyKeyCode = Int(HotkeyManager.presets[hotkeyPopup.indexOfSelectedItem].keyCode)
         NotificationCenter.default.post(name: .hotkeyChanged, object: nil)
+    }
+
+    private func commandKeyNote() -> String {
+        if !Enhancer.isAvailable {
+            return "Voice commands need Apple Intelligence. Hold this key, select text, and speak an edit (e.g. \u{201C}make this formal\u{201D})."
+        }
+        if UserSettings.shared.commandHotkeyKeyCode == UserSettings.shared.hotkeyKeyCode {
+            return "Must differ from the dictation shortcut \u{2014} command mode is off until you pick another key."
+        }
+        return "Hold to edit selected text by voice (e.g. \u{201C}make this formal\u{201D}, \u{201C}translate to English\u{201D})."
+    }
+
+    @objc private func commandHotkeyPopupChanged() {
+        UserSettings.shared.commandHotkeyKeyCode = Int(HotkeyManager.presets[commandHotkeyPopup.indexOfSelectedItem].keyCode)
+        commandHotkeyCaption.stringValue = commandKeyNote()
+        NotificationCenter.default.post(name: .commandHotkeyChanged, object: nil)
     }
 
     @objc private func inputDeviceChanged() {

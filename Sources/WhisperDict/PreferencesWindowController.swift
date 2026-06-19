@@ -56,6 +56,9 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     private let profileField  = ProfileTextField()
     private let snippetsField = ProfileTextField()
     private let statsLabel = NSTextField(labelWithString: "")
+    private let wpmLabel = NSTextField(labelWithString: "")
+    private let topAppsLabel = NSTextField(wrappingLabelWithString: "")
+    private let weekBars = WeekBarsView()
 
     convenience init() {
         let panel = NSPanel(
@@ -87,17 +90,39 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     }
 
     func windowDidBecomeKey(_ notification: Notification) {
-        statsLabel.stringValue = statsSummary()
+        refreshStats()
         let mic = inputItems()
         inputPopup.removeAllItems()
         inputPopup.addItems(withTitles: mic.titles)
         inputPopup.selectItem(at: mic.index)
     }
 
-    private func statsSummary() -> String {
-        let d = UserSettings.shared.totalDictations
-        let w = UserSettings.shared.totalWords
-        return d == 0 ? "No dictations yet." : "\(w) words across \(d) dictations — all on your Mac."
+    private func refreshStats() {
+        let words = StatsStore.totalWords
+        let dictations = StatsStore.totalDictations
+        statsLabel.stringValue = dictations == 0
+            ? "No dictations yet."
+            : "\(words) words · \(dictations) dictations"
+        let wpm = StatsStore.wordsPerMinute()
+        wpmLabel.stringValue = wpm > 0 ? "≈ \(wpm) words/min · all on your Mac" : "All on your Mac."
+
+        let tops = StatsStore.topApps(limit: 3)
+        if tops.isEmpty {
+            topAppsLabel.stringValue = ""
+            topAppsLabel.isHidden = true
+        } else {
+            topAppsLabel.isHidden = false
+            topAppsLabel.stringValue = "Top apps:  " + tops
+                .map { "\(Self.appName(for: $0.bundleID)) (\($0.words))" }
+                .joined(separator: " · ")
+        }
+        weekBars.data = StatsStore.last7Days()
+    }
+
+    /// Human-readable app name for a bundle ID, falling back to the ID itself.
+    private static func appName(for bundleID: String) -> String {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else { return bundleID }
+        return FileManager.default.displayName(atPath: url.path).replacingOccurrences(of: ".app", with: "")
     }
 
     // MARK: - View
@@ -246,12 +271,40 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         footnote.textColor = .tertiaryLabelColor
         footnote.alignment = .left
 
-        statsLabel.font = .systemFont(ofSize: 11)
-        statsLabel.textColor = .tertiaryLabelColor
-        statsLabel.stringValue = statsSummary()
+        statsLabel.font = .systemFont(ofSize: 13, weight: .semibold)
+        statsLabel.textColor = .labelColor
+        wpmLabel.font = .systemFont(ofSize: 11)
+        wpmLabel.textColor = .secondaryLabelColor
+        topAppsLabel.font = .systemFont(ofSize: 11)
+        topAppsLabel.textColor = .secondaryLabelColor
+
+        let weekTitle = NSTextField(labelWithString: "Last 7 days")
+        weekTitle.font = .systemFont(ofSize: 11)
+        weekTitle.textColor = .tertiaryLabelColor
+        weekBars.translatesAutoresizingMaskIntoConstraints = false
+        weekBars.heightAnchor.constraint(equalToConstant: 52).isActive = true
+
+        let statsCol = NSStackView(views: [statsLabel, wpmLabel, topAppsLabel, weekTitle, weekBars])
+        statsCol.orientation = .vertical
+        statsCol.alignment = .leading
+        statsCol.spacing = 6
+        statsCol.translatesAutoresizingMaskIntoConstraints = false
+
+        let statsCard = CardView()
+        statsCard.translatesAutoresizingMaskIntoConstraints = false
+        statsCard.addSubview(statsCol)
+        NSLayoutConstraint.activate([
+            statsCol.topAnchor.constraint(equalTo: statsCard.topAnchor, constant: 20),
+            statsCol.leadingAnchor.constraint(equalTo: statsCard.leadingAnchor, constant: 20),
+            statsCol.trailingAnchor.constraint(equalTo: statsCard.trailingAnchor, constant: -20),
+            statsCol.bottomAnchor.constraint(equalTo: statsCard.bottomAnchor, constant: -20),
+        ])
+        weekBars.widthAnchor.constraint(equalTo: statsCol.widthAnchor).isActive = true
+
+        refreshStats()
 
         // ── Layout ─────────────────────────────────────────
-        let stack = NSStackView(views: [header, card, enhanceCard, snippetsCard, snippetsHint, footnote, statsLabel])
+        let stack = NSStackView(views: [header, card, enhanceCard, snippetsCard, snippetsHint, footnote, statsCard])
         stack.orientation = .vertical
         stack.alignment = .leading
         stack.spacing = 22
@@ -269,7 +322,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
             snippetsCard.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
             snippetsHint.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
             footnote.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
-            statsLabel.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
+            statsCard.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
         ])
         return bg
     }
@@ -440,5 +493,53 @@ private final class CardView: NSView {
             : NSColor.black.withAlphaComponent(0.08)
         layer?.backgroundColor = fill.cgColor
         layer?.borderColor = stroke.cgColor
+    }
+}
+
+// MARK: - WeekBarsView
+
+/// A tiny 7-day bar chart: one bar per day, height proportional to that day's
+/// word count (normalized to the week's max), with a day-initial under each.
+@MainActor
+private final class WeekBarsView: NSView {
+    var data: [(day: String, words: Int)] = [] { didSet { needsDisplay = true } }
+
+    override var intrinsicContentSize: NSSize { NSSize(width: NSView.noIntrinsicMetric, height: 52) }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard !data.isEmpty else { return }
+        let maxWords = max(data.map { $0.words }.max() ?? 0, 1)
+        let labelH: CGFloat = 14
+        let gap: CGFloat = 6
+        let n = CGFloat(data.count)
+        let barW = (bounds.width - gap * (n - 1)) / n
+        let chartH = bounds.height - labelH
+
+        let fill = NSColor.controlAccentColor
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 9),
+            .foregroundColor: NSColor.tertiaryLabelColor,
+        ]
+        for (i, entry) in data.enumerated() {
+            let x = CGFloat(i) * (barW + gap)
+            let h = max(chartH * CGFloat(entry.words) / CGFloat(maxWords), entry.words > 0 ? 3 : 1)
+            let barRect = NSRect(x: x, y: labelH, width: barW, height: h)
+            (entry.words > 0 ? fill : NSColor.quaternaryLabelColor).setFill()
+            NSBezierPath(roundedRect: barRect, xRadius: 2, yRadius: 2).fill()
+
+            // Day initial (first character of the weekday for the date key).
+            let initial = Self.dayInitial(entry.day)
+            let size = initial.size(withAttributes: attrs)
+            initial.draw(at: NSPoint(x: x + (barW - size.width) / 2, y: 0), withAttributes: attrs)
+        }
+    }
+
+    private static let keyFmt: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX"); return f
+    }()
+    private static func dayInitial(_ key: String) -> NSString {
+        guard let date = keyFmt.date(from: key) else { return "" }
+        let wf = DateFormatter(); wf.dateFormat = "EEEEE"  // narrow weekday (single letter)
+        return wf.string(from: date) as NSString
     }
 }

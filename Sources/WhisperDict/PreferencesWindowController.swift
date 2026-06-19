@@ -58,14 +58,19 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     private let vocabField    = NSTextField()
     private let profileField  = ProfileTextField()
     private let snippetsField = ProfileTextField()
-    private let statsLabel = NSTextField(labelWithString: "")
-    private let wpmLabel = NSTextField(labelWithString: "")
-    private let topAppsLabel = NSTextField(wrappingLabelWithString: "")
-    private let weekBars = WeekBarsView()
+
+    // MARK: Stats dashboard
+    private let statsDashboard = StatsDashboardView()
+
+    // MARK: Tab-shell state
+    private let tabs = ["General", "Enhance", "Commands", "Snippets", "Stats"]
+    private var tabButtons: [NSButton] = []
+    private var contentContainer = NSView()
+    private var selectedTab = 0
 
     convenience init() {
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 540, height: 790),
+            contentRect: NSRect(x: 0, y: 0, width: 660, height: 460),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -93,39 +98,15 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     }
 
     func windowDidBecomeKey(_ notification: Notification) {
-        refreshStats()
         let mic = inputItems()
         inputPopup.removeAllItems()
         inputPopup.addItems(withTitles: mic.titles)
         inputPopup.selectItem(at: mic.index)
+        statsDashboard.refresh()
     }
 
     private func refreshStats() {
-        let words = StatsStore.totalWords
-        let dictations = StatsStore.totalDictations
-        statsLabel.stringValue = dictations == 0
-            ? "No dictations yet."
-            : "\(words) words · \(dictations) dictations"
-        let wpm = StatsStore.wordsPerMinute()
-        wpmLabel.stringValue = wpm > 0 ? "≈ \(wpm) words/min · all on your Mac" : "All on your Mac."
-
-        let tops = StatsStore.topApps(limit: 3)
-        if tops.isEmpty {
-            topAppsLabel.stringValue = ""
-            topAppsLabel.isHidden = true
-        } else {
-            topAppsLabel.isHidden = false
-            topAppsLabel.stringValue = "Top apps:  " + tops
-                .map { "\(Self.appName(for: $0.bundleID)) (\($0.words))" }
-                .joined(separator: " · ")
-        }
-        weekBars.data = StatsStore.last30Days().suffix(7).map { $0 }
-    }
-
-    /// Human-readable app name for a bundle ID, falling back to the ID itself.
-    private static func appName(for bundleID: String) -> String {
-        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else { return bundleID }
-        return FileManager.default.displayName(atPath: url.path).replacingOccurrences(of: ".app", with: "")
+        statsDashboard.refresh()
     }
 
     // MARK: - View
@@ -137,35 +118,111 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         bg.state = .active
         bg.translatesAutoresizingMaskIntoConstraints = false
 
-        // ── Header ─────────────────────────────────────────
-        let appIcon = NSImageView()
-        if let icon = NSImage(named: "AppIcon") ?? NSApp.applicationIconImage {
-            appIcon.image = icon
+        // ── Sidebar ────────────────────────────────────────
+        let sidebar = NSVisualEffectView()
+        sidebar.material = .sidebar
+        sidebar.blendingMode = .behindWindow
+        sidebar.state = .active
+        sidebar.translatesAutoresizingMaskIntoConstraints = false
+
+        tabButtons = tabs.enumerated().map { (i, title) in
+            let btn = NSButton(title: title, target: self, action: #selector(tabClicked(_:)))
+            btn.tag = i
+            btn.bezelStyle = .recessed
+            btn.setButtonType(.toggle)
+            btn.state = i == 0 ? .on : .off
+            btn.font = .systemFont(ofSize: 13)
+            btn.translatesAutoresizingMaskIntoConstraints = false
+            return btn
         }
-        appIcon.imageScaling = .scaleProportionallyUpOrDown
-        appIcon.translatesAutoresizingMaskIntoConstraints = false
-        appIcon.widthAnchor.constraint(equalToConstant: 56).isActive = true
-        appIcon.heightAnchor.constraint(equalToConstant: 56).isActive = true
 
-        let title = NSTextField(labelWithString: "WhisperDict")
-        title.font = .systemFont(ofSize: 22, weight: .bold)
-        title.textColor = .labelColor
+        let sideStack = NSStackView(views: tabButtons)
+        sideStack.orientation = .vertical
+        sideStack.alignment = .leading
+        sideStack.spacing = 2
+        sideStack.edgeInsets = NSEdgeInsets(top: 52, left: 12, bottom: 16, right: 12)
+        sideStack.translatesAutoresizingMaskIntoConstraints = false
 
-        let subtitle = NSTextField(labelWithString: "Voice dictation, anywhere on your Mac.")
-        subtitle.font = .systemFont(ofSize: 12)
-        subtitle.textColor = .secondaryLabelColor
+        sidebar.addSubview(sideStack)
+        NSLayoutConstraint.activate([
+            sideStack.topAnchor.constraint(equalTo: sidebar.topAnchor),
+            sideStack.leadingAnchor.constraint(equalTo: sidebar.leadingAnchor),
+            sideStack.trailingAnchor.constraint(equalTo: sidebar.trailingAnchor),
+            sideStack.bottomAnchor.constraint(lessThanOrEqualTo: sidebar.bottomAnchor),
+        ])
+        for btn in tabButtons {
+            btn.widthAnchor.constraint(equalTo: sideStack.widthAnchor, constant: -24).isActive = true
+        }
 
-        let titleStack = NSStackView(views: [title, subtitle])
-        titleStack.orientation = .vertical
-        titleStack.alignment = .leading
-        titleStack.spacing = 2
+        // ── Content container ──────────────────────────────
+        contentContainer.translatesAutoresizingMaskIntoConstraints = false
 
-        let header = NSStackView(views: [appIcon, titleStack])
-        header.orientation = .horizontal
-        header.alignment = .centerY
-        header.spacing = 14
+        // ── Save button ────────────────────────────────────
+        let saveBtn = NSButton(title: "Save", target: self, action: #selector(saveClicked))
+        saveBtn.bezelStyle = .rounded
+        saveBtn.keyEquivalent = "\r"
+        saveBtn.translatesAutoresizingMaskIntoConstraints = false
 
-        // ── Form rows ──────────────────────────────────────
+        // ── Layout ─────────────────────────────────────────
+        bg.addSubview(sidebar)
+        bg.addSubview(contentContainer)
+        bg.addSubview(saveBtn)
+
+        NSLayoutConstraint.activate([
+            sidebar.topAnchor.constraint(equalTo: bg.topAnchor),
+            sidebar.leadingAnchor.constraint(equalTo: bg.leadingAnchor),
+            sidebar.bottomAnchor.constraint(equalTo: bg.bottomAnchor),
+            sidebar.widthAnchor.constraint(equalToConstant: 140),
+
+            contentContainer.topAnchor.constraint(equalTo: bg.topAnchor, constant: 52),
+            contentContainer.leadingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: 24),
+            contentContainer.trailingAnchor.constraint(equalTo: bg.trailingAnchor, constant: -24),
+            contentContainer.bottomAnchor.constraint(equalTo: saveBtn.topAnchor, constant: -16),
+
+            saveBtn.trailingAnchor.constraint(equalTo: bg.trailingAnchor, constant: -24),
+            saveBtn.bottomAnchor.constraint(equalTo: bg.bottomAnchor, constant: -20),
+        ])
+
+        selectTab(0)
+        return bg
+    }
+
+    @objc private func tabClicked(_ sender: NSButton) {
+        selectTab(sender.tag)
+    }
+
+    private func selectTab(_ index: Int) {
+        selectedTab = index
+        for (i, btn) in tabButtons.enumerated() {
+            btn.state = i == index ? .on : .off
+        }
+        contentContainer.subviews.forEach { $0.removeFromSuperview() }
+        let tabView: NSView
+        switch index {
+        case 0: tabView = buildGeneralTab()
+        case 1: tabView = buildEnhanceTab()
+        case 2: tabView = buildCommandsTab()
+        case 3: tabView = buildSnippetsTab()
+        case 4: tabView = buildStatsTab()
+        default: tabView = NSView()
+        }
+        tabView.translatesAutoresizingMaskIntoConstraints = false
+        contentContainer.addSubview(tabView)
+        NSLayoutConstraint.activate([
+            tabView.topAnchor.constraint(equalTo: contentContainer.topAnchor),
+            tabView.leadingAnchor.constraint(equalTo: contentContainer.leadingAnchor),
+            tabView.trailingAnchor.constraint(equalTo: contentContainer.trailingAnchor),
+            tabView.bottomAnchor.constraint(lessThanOrEqualTo: contentContainer.bottomAnchor),
+        ])
+    }
+
+    @objc private func saveClicked() {
+        window?.close()
+    }
+
+    // MARK: - Tab Builders
+
+    private func buildGeneralTab() -> NSView {
         configurePopup(langPopup,
                        items: languages.map { $0.label },
                        selectedIndex: languages.firstIndex { $0.code == UserSettings.shared.language } ?? 0,
@@ -180,32 +237,12 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         modelCaption.textColor = .secondaryLabelColor
         modelCaption.stringValue = modelNote(for: UserSettings.shared.modelName)
 
-        // Keep the caption visually attached under the model popup.
-        let modelCol = NSStackView(views: [modelPopup, modelCaption])
-        modelCol.orientation = .vertical
-        modelCol.alignment = .leading
-        modelCol.spacing = 4
-        modelCaption.widthAnchor.constraint(equalTo: modelCol.widthAnchor).isActive = true
+        let modelCol = tabColumn(modelPopup, caption: modelCaption)
 
         configurePopup(hotkeyPopup,
                        items: HotkeyManager.presets.map { $0.label },
                        selectedIndex: HotkeyManager.presets.firstIndex { $0.keyCode == UInt16(UserSettings.shared.hotkeyKeyCode) } ?? 0,
                        action: #selector(hotkeyPopupChanged))
-
-        configurePopup(commandHotkeyPopup,
-                       items: HotkeyManager.presets.map { $0.label },
-                       selectedIndex: HotkeyManager.presets.firstIndex { $0.keyCode == UInt16(UserSettings.shared.commandHotkeyKeyCode) } ?? 1,
-                       action: #selector(commandHotkeyPopupChanged))
-
-        commandHotkeyCaption.font = .systemFont(ofSize: 11)
-        commandHotkeyCaption.textColor = .secondaryLabelColor
-        commandHotkeyCaption.stringValue = commandKeyNote()
-
-        let commandCol = NSStackView(views: [commandHotkeyPopup, commandHotkeyCaption])
-        commandCol.orientation = .vertical
-        commandCol.alignment = .leading
-        commandCol.spacing = 4
-        commandHotkeyCaption.widthAnchor.constraint(equalTo: commandCol.widthAnchor).isActive = true
 
         let mic = inputItems()
         configurePopup(inputPopup,
@@ -213,15 +250,15 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
                        selectedIndex: mic.index,
                        action: #selector(inputDeviceChanged))
 
-        let card = makeCard(rows: [
-            ("Shortcut",    hotkeyPopup),
-            ("Command key", commandCol),
-            ("Language",    langPopup),
-            ("Model",       modelCol),
-            ("Microphone",  inputPopup),
+        return makeCard(rows: [
+            ("Shortcut",   hotkeyPopup),
+            ("Language",   langPopup),
+            ("Model",      modelCol),
+            ("Microphone", inputPopup),
         ])
+    }
 
-        // ── Enhancement card ───────────────────────────────
+    private func buildEnhanceTab() -> NSView {
         let available = Enhancer.isAvailable
 
         enhanceSwitch.state = (UserSettings.shared.enhanceEnabled && available) ? .on : .off
@@ -246,11 +283,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
             ? "Cleans up dictation on-device. With Auto style on, the style adapts to the app (email, code…) and this picker is the fallback."
             : "Requires macOS 26 and Apple Intelligence — enable it in System Settings → Apple Intelligence."
 
-        let styleCol = NSStackView(views: [stylePopup, enhanceCaption])
-        styleCol.orientation = .vertical
-        styleCol.alignment = .leading
-        styleCol.spacing = 4
-        enhanceCaption.widthAnchor.constraint(equalTo: styleCol.widthAnchor).isActive = true
+        let styleCol = tabColumn(stylePopup, caption: enhanceCaption)
 
         vocabField.stringValue = UserSettings.shared.vocabulary
         vocabField.placeholderString = "WhisperKit, Sasha Bédard, …"
@@ -265,86 +298,72 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         profileField.textView.delegate = self
         profileField.heightAnchor.constraint(equalToConstant: 60).isActive = true
 
-        let enhanceCard = makeCard(rows: [
+        return makeCard(rows: [
             ("Enhance",    enhanceSwitch),
             ("Auto style", perAppSwitch),
             ("Style",      styleCol),
             ("Vocabulary", vocabField),
             ("About you",  profileField),
         ])
+    }
 
-        // ── Snippets card (independent of Apple Intelligence) ──
+    private func buildCommandsTab() -> NSView {
+        configurePopup(commandHotkeyPopup,
+                       items: HotkeyManager.presets.map { $0.label },
+                       selectedIndex: HotkeyManager.presets.firstIndex { $0.keyCode == UInt16(UserSettings.shared.commandHotkeyKeyCode) } ?? 1,
+                       action: #selector(commandHotkeyPopupChanged))
+
+        commandHotkeyCaption.font = .systemFont(ofSize: 11)
+        commandHotkeyCaption.textColor = .secondaryLabelColor
+        commandHotkeyCaption.stringValue = commandKeyNote()
+
+        let commandCol = tabColumn(commandHotkeyPopup, caption: commandHotkeyCaption)
+
+        return makeCard(rows: [
+            ("Command key", commandCol),
+        ])
+    }
+
+    private func buildSnippetsTab() -> NSView {
         snippetsField.stringValue = UserSettings.shared.snippetsRaw
         snippetsField.textView.delegate = self
-        snippetsField.heightAnchor.constraint(equalToConstant: 56).isActive = true
+        snippetsField.heightAnchor.constraint(equalToConstant: 80).isActive = true
 
-        let snippetsCard = makeCard(rows: [("Snippets", snippetsField)])
+        let card = makeCard(rows: [("Snippets", snippetsField)])
 
-        let snippetsHint = NSTextField(wrappingLabelWithString: "Spoken shortcuts, one per line:  trigger => expansion  (e.g.  my email => you@example.com)")
-        snippetsHint.font = .systemFont(ofSize: 11)
-        snippetsHint.textColor = .tertiaryLabelColor
+        let hint = NSTextField(wrappingLabelWithString: "Spoken shortcuts, one per line:  trigger => expansion  (e.g.  my email => you@example.com)")
+        hint.font = .systemFont(ofSize: 11)
+        hint.textColor = .tertiaryLabelColor
+        hint.translatesAutoresizingMaskIntoConstraints = false
 
-        // ── Footnote ───────────────────────────────────────
-        let footnote = NSTextField(wrappingLabelWithString: "Changes apply automatically. Switching the model triggers a one-time reload on the next recording.")
-        footnote.font = .systemFont(ofSize: 11)
-        footnote.textColor = .tertiaryLabelColor
-        footnote.alignment = .left
-
-        statsLabel.font = .systemFont(ofSize: 13, weight: .semibold)
-        statsLabel.textColor = .labelColor
-        wpmLabel.font = .systemFont(ofSize: 11)
-        wpmLabel.textColor = .secondaryLabelColor
-        topAppsLabel.font = .systemFont(ofSize: 11)
-        topAppsLabel.textColor = .secondaryLabelColor
-
-        let weekTitle = NSTextField(labelWithString: "Last 7 days")
-        weekTitle.font = .systemFont(ofSize: 11)
-        weekTitle.textColor = .tertiaryLabelColor
-        weekBars.translatesAutoresizingMaskIntoConstraints = false
-        weekBars.heightAnchor.constraint(equalToConstant: 52).isActive = true
-
-        let statsCol = NSStackView(views: [statsLabel, wpmLabel, topAppsLabel, weekTitle, weekBars])
-        statsCol.orientation = .vertical
-        statsCol.alignment = .leading
-        statsCol.spacing = 6
-        statsCol.translatesAutoresizingMaskIntoConstraints = false
-
-        let statsCard = CardView()
-        statsCard.translatesAutoresizingMaskIntoConstraints = false
-        statsCard.addSubview(statsCol)
-        NSLayoutConstraint.activate([
-            statsCol.topAnchor.constraint(equalTo: statsCard.topAnchor, constant: 20),
-            statsCol.leadingAnchor.constraint(equalTo: statsCard.leadingAnchor, constant: 20),
-            statsCol.trailingAnchor.constraint(equalTo: statsCard.trailingAnchor, constant: -20),
-            statsCol.bottomAnchor.constraint(equalTo: statsCard.bottomAnchor, constant: -20),
-        ])
-        weekBars.widthAnchor.constraint(equalTo: statsCol.widthAnchor).isActive = true
-
-        refreshStats()
-
-        // ── Layout ─────────────────────────────────────────
-        let stack = NSStackView(views: [header, card, enhanceCard, snippetsCard, snippetsHint, footnote, statsCard])
+        let stack = NSStackView(views: [card, hint])
         stack.orientation = .vertical
         stack.alignment = .leading
-        stack.spacing = 22
-        stack.edgeInsets = NSEdgeInsets(top: 36, left: 32, bottom: 28, right: 32)
+        stack.spacing = 10
         stack.translatesAutoresizingMaskIntoConstraints = false
-
-        bg.addSubview(stack)
-        NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: bg.topAnchor),
-            stack.leadingAnchor.constraint(equalTo: bg.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: bg.trailingAnchor),
-            stack.bottomAnchor.constraint(lessThanOrEqualTo: bg.bottomAnchor),
-            card.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
-            enhanceCard.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
-            snippetsCard.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
-            snippetsHint.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
-            footnote.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
-            statsCard.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -64),
-        ])
-        return bg
+        hint.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        return stack
     }
+
+    private func buildStatsTab() -> NSView {
+        statsDashboard.refresh()
+        statsDashboard.translatesAutoresizingMaskIntoConstraints = false
+        return statsDashboard
+    }
+
+    /// Stacks a popup above a caption label for use as a card control.
+    private func tabColumn(_ control: NSView, caption: NSTextField) -> NSView {
+        let col = NSStackView(views: [control, caption])
+        col.orientation = .vertical
+        col.alignment = .leading
+        col.spacing = 4
+        col.translatesAutoresizingMaskIntoConstraints = false
+        caption.widthAnchor.constraint(equalTo: col.widthAnchor).isActive = true
+        return col
+    }
+
+    // MARK: - Helpers
 
     /// Recomputes the device list and the parallel `inputDeviceUIDs`, returning
     /// the popup titles and the index matching the saved UID (0 = system default).
@@ -528,53 +547,5 @@ private final class CardView: NSView {
             : NSColor.black.withAlphaComponent(0.08)
         layer?.backgroundColor = fill.cgColor
         layer?.borderColor = stroke.cgColor
-    }
-}
-
-// MARK: - WeekBarsView
-
-/// A tiny 7-day bar chart: one bar per day, height proportional to that day's
-/// word count (normalized to the week's max), with a day-initial under each.
-@MainActor
-private final class WeekBarsView: NSView {
-    var data: [(day: String, words: Int)] = [] { didSet { needsDisplay = true } }
-
-    override var intrinsicContentSize: NSSize { NSSize(width: NSView.noIntrinsicMetric, height: 52) }
-
-    override func draw(_ dirtyRect: NSRect) {
-        guard !data.isEmpty else { return }
-        let maxWords = max(data.map { $0.words }.max() ?? 0, 1)
-        let labelH: CGFloat = 14
-        let gap: CGFloat = 6
-        let n = CGFloat(data.count)
-        let barW = (bounds.width - gap * (n - 1)) / n
-        let chartH = bounds.height - labelH
-
-        let fill = NSColor.controlAccentColor
-        let attrs: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 9),
-            .foregroundColor: NSColor.tertiaryLabelColor,
-        ]
-        for (i, entry) in data.enumerated() {
-            let x = CGFloat(i) * (barW + gap)
-            let h = max(chartH * CGFloat(entry.words) / CGFloat(maxWords), entry.words > 0 ? 3 : 1)
-            let barRect = NSRect(x: x, y: labelH, width: barW, height: h)
-            (entry.words > 0 ? fill : NSColor.quaternaryLabelColor).setFill()
-            NSBezierPath(roundedRect: barRect, xRadius: 2, yRadius: 2).fill()
-
-            // Day initial (first character of the weekday for the date key).
-            let initial = Self.dayInitial(entry.day)
-            let size = initial.size(withAttributes: attrs)
-            initial.draw(at: NSPoint(x: x + (barW - size.width) / 2, y: 0), withAttributes: attrs)
-        }
-    }
-
-    private static let keyFmt: DateFormatter = {
-        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"; f.locale = Locale(identifier: "en_US_POSIX"); return f
-    }()
-    private static func dayInitial(_ key: String) -> NSString {
-        guard let date = keyFmt.date(from: key) else { return "" }
-        let wf = DateFormatter(); wf.dateFormat = "EEEEE"  // narrow weekday (single letter)
-        return wf.string(from: date) as NSString
     }
 }

@@ -1,7 +1,4 @@
 import Foundation
-#if canImport(FoundationModels)
-import FoundationModels
-#endif
 
 /// Why the on-device model is or isn't usable, so the UI can react: nudge the
 /// user when Apple Intelligence is merely off, stay silent when the OS/device
@@ -19,118 +16,41 @@ enum EnhanceStyle: String {
     case faithful, polished, email, code
 }
 
-#if canImport(FoundationModels)
-/// Structured output target. Guided generation forces the model to fill `text`
-/// with a bare string — no preamble, no executed instructions. Markdown is
-/// disallowed EXCEPT a plain "- " bullet list, which the session instructions
-/// opt into per-app (otherwise the schema would veto the list formatting).
-@available(macOS 26.0, *)
-@Generable
-private struct CleanedDictation {
-    @Guide(description: "The cleaned dictation text only, in the SAME language as the input, with no preamble and no quotes. No markdown, EXCEPT a plain \"- \" bulleted list (one item per line) when the instructions ask for list formatting.")
-    var text: String
-}
-#endif
-
-/// Wraps Apple's on-device language model to polish a raw transcript.
-///
-/// All FoundationModels use is doubly gated: `#if canImport(FoundationModels)`
-/// so the app still compiles on SDKs without the module (macOS < 26 toolchains),
-/// and `if #available(macOS 26.0, *)` so it never runs on an older OS.
-///
-/// Each `enhance` call builds a **fresh** `LanguageModelSession`. Sessions are
-/// conversational — reusing one would accumulate transcript history across
-/// dictations (cross-contamination + unbounded context growth). The underlying
-/// model loads once per process, so a fresh session per call is cheap (~0.4s).
+/// Façade over the Enhance backends. AppDelegate/Preferences call this; it picks
+/// the active backend per UserSettings and falls back Apple → raw.
 actor Enhancer {
-    /// True only when built against the FoundationModels SDK, running on macOS
-    /// 26+, with Apple Intelligence enabled and the model ready.
-    static var isAvailable: Bool { availabilityState == .available }
+    private let apple = AppleEnhanceBackend()
+    // Phase B adds: private let mlx = MLXEnhanceBackend()
 
-    /// Why Enhance is or isn't available — drives the "enable Apple Intelligence"
-    /// nudge (shown only for `.needsAppleIntelligence`).
-    static var availabilityState: EnhanceAvailability {
-        #if canImport(FoundationModels)
-        if #available(macOS 26.0, *) {
-            switch SystemLanguageModel.default.availability {
-            case .available:
-                return .available
-            case .unavailable(.appleIntelligenceNotEnabled):
-                return .needsAppleIntelligence
-            default:
-                return .unsupported
-            }
-        }
-        #endif
-        return .unsupported
+    /// The Apple-specific availability, for the "enable Apple Intelligence" nudge.
+    static var availabilityState: EnhanceAvailability { AppleEnhanceBackend.availabilityState }
+
+    /// True when the effective backend (selected, or Apple fallback) can run.
+    static var isAvailable: Bool {
+        // Phase A: only the Apple backend exists. Phase B updates this to also
+        // return true when the selected MLX model is downloaded.
+        AppleEnhanceBackend.isAvailable
     }
 
-    /// Triggers the one-time, process-wide model load so the first real enhance
-    /// is warm (~0.4s instead of ~0.85s). The throwaway session is discarded.
+    /// The effective backend for this call: the selected one if ready, else Apple.
+    private func effectiveBackend() async -> EnhanceBackend? {
+        // Phase A: always Apple. Phase B resolves UserSettings.enhanceBackend.
+        apple.isReady ? apple : nil
+    }
+
     func warmup() async {
-        #if canImport(FoundationModels)
-        guard Self.isAvailable else { return }
-        if #available(macOS 26.0, *) {
-            let session = LanguageModelSession(instructions: EnhancePrompt.instructions(style: .faithful, formatLists: false))
-            _ = try? await session.respond(to: "warmup", generating: CleanedDictation.self)
-        }
-        #endif
+        await effectiveBackend()?.warmup()
     }
 
-    /// Returns a cleaned version of `raw`, or `raw` unchanged on any failure.
-    /// `vocabulary` is an optional glossary to spell exactly; `profile` is an
-    /// optional free-form "about you" used as context (never echoed).
-    func enhance(_ raw: String, style: EnhanceStyle, vocabulary: [String] = [], profile: String = "", formatLists: Bool = false) async -> String {
-        #if canImport(FoundationModels)
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, Self.isAvailable else { return raw }
-        if #available(macOS 26.0, *) {
-            let instructions = EnhancePrompt.instructions(style: style, formatLists: formatLists)
-            let session = LanguageModelSession(instructions: instructions)
-            let prompt = EnhancePrompt.userPrompt(dictation: trimmed, vocabulary: vocabulary, profile: profile)
-            do {
-                // Greedy (temperature 0): cleanup is a deterministic task, not a
-                // creative one. Without this the model samples and sometimes
-                // returns the input near-verbatim or skips the glossary.
-                let response = try await session.respond(
-                    to: prompt,
-                    generating: CleanedDictation.self,
-                    options: GenerationOptions(temperature: 0.0)
-                )
-                let out = response.content.text.trimmingCharacters(in: .whitespacesAndNewlines)
-                return out.isEmpty ? raw : out
-            } catch {
-                return raw
-            }
-        }
-        #endif
-        return raw
+    func enhance(_ raw: String, style: EnhanceStyle, vocabulary: [String] = [],
+                 profile: String = "", formatLists: Bool = false) async -> String {
+        guard let backend = await effectiveBackend() else { return raw }
+        return await backend.enhance(raw, style: style, vocabulary: vocabulary,
+                                     profile: profile, formatLists: formatLists) ?? raw
     }
 
-    /// Applies a spoken instruction to `text` and returns the edited text, or
-    /// the original on any failure. Unlike enhance(), this DOES act on the
-    /// instruction. Output is guided-generation-constrained (bare string) so the
-    /// target text cannot inject instructions.
     func runCommand(instruction: String, on text: String) async -> String {
-        #if canImport(FoundationModels)
-        let inst = instruction.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !inst.isEmpty, !text.isEmpty, Self.isAvailable else { return text }
-        if #available(macOS 26.0, *) {
-            let session = LanguageModelSession(instructions: EnhancePrompt.commandInstructions)
-            let prompt = EnhancePrompt.commandUserPrompt(instruction: inst, on: text)
-            do {
-                let response = try await session.respond(
-                    to: prompt,
-                    generating: CleanedDictation.self,
-                    options: GenerationOptions(temperature: 0.0))
-                let out = response.content.text.trimmingCharacters(in: .whitespacesAndNewlines)
-                return out.isEmpty ? text : out
-            } catch {
-                return text
-            }
-        }
-        #endif
-        return text
+        guard let backend = await effectiveBackend() else { return text }
+        return await backend.runCommand(instruction: instruction, on: text) ?? text
     }
-
 }

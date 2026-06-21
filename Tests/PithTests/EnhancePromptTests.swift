@@ -1,5 +1,5 @@
 import XCTest
-@testable import WhisperDict
+@testable import Pith
 
 final class EnhancePromptTests: XCTestCase {
     func testInstructionsIncludeListRuleOnlyWhenAsked() {

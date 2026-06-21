@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Package WhisperDict.app into a polished, distributable .dmg with a custom
+# Package Pith.app into a polished, distributable .dmg with a custom
 # window, background image, and drag-to-Applications layout.
 #
 # Uses dmgbuild (writes the layout directly, no Finder automation needed):
@@ -13,7 +13,7 @@ set -euo pipefail
 # Operate from the repo root regardless of where the script is invoked.
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-NAME="WhisperDict"
+NAME="Pith"
 APP="${NAME}.app"
 BG="Scripts/assets/dmg_background.png"
 

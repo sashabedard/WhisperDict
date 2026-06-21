@@ -4,7 +4,7 @@
 <dict>
     <!--
       Hardened runtime (required for notarization) blocks resource access by
-      default. WhisperDict needs the microphone for dictation; that's the only
+      default. Pith needs the microphone for dictation; that's the only
       capability gated by an entitlement here.
 
       Deliberately NOT sandboxed: the global push-to-talk monitor, the

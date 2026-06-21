@@ -1,28 +1,28 @@
 #!/usr/bin/env bash
 #
-# Notarize WhisperDict.app and the distributable .dmg with Apple's notary
+# Notarize Pith.app and the distributable .dmg with Apple's notary
 # service, then staple the tickets so Gatekeeper accepts them with no warning.
 #
 # One-time prerequisites:
 #   1. Apple Developer Program membership (paid) and a "Developer ID Application"
 #      certificate (Xcode → Settings → Accounts → Manage Certificates → +).
 #   2. Store notary credentials once (creates a keychain profile):
-#        xcrun notarytool store-credentials "whisperdict" \
+#        xcrun notarytool store-credentials "pith" \
 #          --apple-id "sasha.touille@hotmail.fr" --team-id 7CN9557P92 \
 #          --password "<app-specific-password from appleid.apple.com>"
 #
 # Usage:
 #   ./Scripts/build.sh && ./Scripts/notarize.sh
-#   NOTARY_PROFILE=whisperdict ./Scripts/notarize.sh   # override profile name
+#   NOTARY_PROFILE=pith ./Scripts/notarize.sh   # override profile name
 #
 set -euo pipefail
 
 # Operate from the repo root regardless of where the script is invoked.
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-NAME="WhisperDict"
+NAME="Pith"
 APP="${NAME}.app"
-PROFILE="${NOTARY_PROFILE:-whisperdict}"
+PROFILE="${NOTARY_PROFILE:-pith}"
 
 [[ -d "$APP" ]] || { echo "ERROR: $APP not found — run ./Scripts/build.sh first"; exit 1; }
 

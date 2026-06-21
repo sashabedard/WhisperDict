@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Build WhisperDict.app from Swift Package
+# Build Pith.app from Swift Package
 #
 # Usage: ./Scripts/build.sh   (works from anywhere — cd's to the repo root)
 #
@@ -10,7 +10,7 @@ set -euo pipefail
 # Operate from the repo root regardless of where the script is invoked.
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
-NAME="WhisperDict"
+NAME="Pith"
 APP="${NAME}.app"
 ARCH="$(uname -m)"  # arm64 sur Apple Silicon
 
@@ -38,12 +38,12 @@ ICON="Scripts/assets/AppIcon.icns"
 #   1. "Developer ID Application" cert  → release builds: hardened runtime +
 #      secure timestamp + entitlements, so the app can be NOTARIZED
 #      (./Scripts/notarize.sh). This is what removes the Gatekeeper warning.
-#   2. "WhisperDict Self-Signed"        → local dev: a stable identity
+#   2. "Pith Self-Signed"        → local dev: a stable identity
 #      (./Scripts/setup_signing.sh) so macOS keeps the Accessibility/Microphone
 #      grants across rebuilds.
 #   3. ad-hoc                           → last resort.
-SELF_IDENTITY="WhisperDict Self-Signed"
-ENTITLEMENTS="WhisperDict.entitlements"
+SELF_IDENTITY="Pith Self-Signed"
+ENTITLEMENTS="Pith.entitlements"
 # `|| true` so a no-match grep doesn't trip `set -e`/`pipefail` when no
 # Developer ID cert is installed (the common local-dev case).
 DEVID="$(security find-identity -p codesigning -v 2>/dev/null \

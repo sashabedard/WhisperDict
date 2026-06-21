@@ -140,7 +140,7 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
         title.font = .systemFont(ofSize: 13, weight: .semibold)
         title.textColor = .labelColor
 
-        let detail = NSTextField(wrappingLabelWithString: "Move WhisperDict into your Applications folder to finish setup and stop the repeated security warning.")
+        let detail = NSTextField(wrappingLabelWithString: "Move Pith into your Applications folder to finish setup and stop the repeated security warning.")
         detail.font = .systemFont(ofSize: 11)
         detail.textColor = .secondaryLabelColor
 
@@ -180,7 +180,7 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
         effect.translatesAutoresizingMaskIntoConstraints = false
 
         // Title
-        let title = NSTextField(labelWithString: "Welcome to WhisperDict")
+        let title = NSTextField(labelWithString: "Welcome to Pith")
         title.font = .systemFont(ofSize: 17, weight: .semibold)
         title.textColor = .labelColor
 
@@ -207,7 +207,7 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
 
         profileField.stringValue = UserSettings.shared.profile
 
-        let aboutHint = NSTextField(wrappingLabelWithString: "Your name, role, and what you work on — helps WhisperDict spell names and terms right. Stays on your Mac.")
+        let aboutHint = NSTextField(wrappingLabelWithString: "Your name, role, and what you work on — helps Pith spell names and terms right. Stays on your Mac.")
         aboutHint.font = .systemFont(ofSize: 11)
         aboutHint.textColor = .secondaryLabelColor
 

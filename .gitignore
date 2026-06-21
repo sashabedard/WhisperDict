@@ -7,7 +7,7 @@ DerivedData/
 xcuserdata/
 
 # ── Build & distribution outputs (shipped via GitHub Releases) ────
-WhisperDict.app/
+Pith.app/
 *.app/
 *.zip
 *.dmg

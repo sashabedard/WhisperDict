@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""WhisperDict icon — minimal waveform on warm gradient, inspired by Claude's aesthetic."""
+"""Pith icon — minimal waveform on warm gradient, inspired by Claude's aesthetic."""
 
 import os
 import subprocess

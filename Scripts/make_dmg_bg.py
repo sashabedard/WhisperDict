@@ -39,7 +39,7 @@ def centered(text, y, fnt, fill):
     draw.text(((W - w) / 2, y * S), text, font=fnt, fill=fill)
 
 
-centered("WhisperDict", 42, font(30), (44, 36, 30))
+centered("Pith", 42, font(30), (44, 36, 30))
 centered("Drag the app onto the Applications folder", 82, font(14), (130, 114, 102))
 
 # Arrow between the two icon slots (app at x=150, Applications at x=450, y=210).

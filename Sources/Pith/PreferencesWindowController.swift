@@ -279,7 +279,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         autoUpdateSwitch.action = #selector(autoUpdateToggled)
 
         let updateCaption = NSTextField(wrappingLabelWithString:
-            "Off by default. The only time WhisperDict touches the network: an optional version check against GitHub — no data about you is sent.")
+            "Off by default. The only time Pith touches the network: an optional version check against GitHub — no data about you is sent.")
         updateCaption.font = .systemFont(ofSize: 11)
         updateCaption.textColor = .secondaryLabelColor
 

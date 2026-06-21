@@ -1,5 +1,5 @@
 import XCTest
-@testable import WhisperDict
+@testable import Pith
 
 final class UpdateCheckerTests: XCTestCase {
     func testIsNewerByPatchMinorMajor() {
@@ -27,12 +27,12 @@ final class UpdateCheckerTests: XCTestCase {
         let json = """
         {"tag_name":"v0.2.2","assets":[
           {"name":"notes.txt","browser_download_url":"https://x/notes.txt"},
-          {"name":"WhisperDict-0.2.2.dmg","browser_download_url":"https://x/WhisperDict-0.2.2.dmg"}
+          {"name":"Pith-0.2.2.dmg","browser_download_url":"https://x/Pith-0.2.2.dmg"}
         ]}
         """.data(using: .utf8)!
         let release = UpdateChecker.parse(json)
         XCTAssertEqual(release?.version, "0.2.2")
-        XCTAssertEqual(release?.dmgURL?.absoluteString, "https://x/WhisperDict-0.2.2.dmg")
+        XCTAssertEqual(release?.dmgURL?.absoluteString, "https://x/Pith-0.2.2.dmg")
     }
     func testParseReturnsNilDmgWhenNoDmgAsset() {
         let json = """

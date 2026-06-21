@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Render docs/demo.gif entirely in code (no screen capture) — a stylized demo of
-the WhisperDict flow: hold the key, the recording overlay shows live equalizer
+the Pith flow: hold the key, the recording overlay shows live equalizer
 bars, it transcribes, and clean text appears in the editor. On-brand (warm/copper
 accents, the app's dark overlay pill).
 
@@ -123,7 +123,7 @@ def frame(t, total_t):
 
     # menu-bar hint (top-right): a copper dot + name
     d.ellipse([(W - 170) * SS, 21 * SS, (W - 162) * SS, 29 * SS], fill=ACCENT)
-    d.text(((W - 154) * SS, 18 * SS), "WhisperDict", font=font(13), fill=(120, 116, 112))
+    d.text(((W - 154) * SS, 18 * SS), "Pith", font=font(13), fill=(120, 116, 112))
 
     # editor window
     wx, wy, ww, wh = 90, 70, W - 180, H - 185

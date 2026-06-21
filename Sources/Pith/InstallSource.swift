@@ -6,8 +6,8 @@ import Foundation
 enum InstallSource {
     /// Homebrew Caskroom locations to probe. Overridable in tests.
     static var caskroomPaths = [
-        "/opt/homebrew/Caskroom/whisperdict",   // Apple Silicon
-        "/usr/local/Caskroom/whisperdict",       // Intel
+        "/opt/homebrew/Caskroom/pith",   // Apple Silicon
+        "/usr/local/Caskroom/pith",       // Intel
     ]
 
     /// True when the app lives in a Homebrew Cask install.

@@ -1,5 +1,5 @@
 import XCTest
-@testable import WhisperDict
+@testable import Pith
 
 /// A controllable backend for testing the façade's fallback logic.
 private struct FakeBackend: EnhanceBackend {

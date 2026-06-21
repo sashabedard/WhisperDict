@@ -9,7 +9,7 @@ struct Release {
 /// Checks GitHub for a newer release. Pure parse/compare helpers are testable;
 /// `fetchLatest` is the only network touch and returns nil on any failure.
 enum UpdateChecker {
-    private static let repo = "sashabedard/WhisperDict"
+    private static let repo = "sashabedard/Pith"
 
     static func currentVersion() -> String {
         (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "0.0.0"

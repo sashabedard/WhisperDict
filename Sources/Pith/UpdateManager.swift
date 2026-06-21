@@ -29,7 +29,7 @@ final class UpdateManager {
         // If Homebrew manages this app, defer to `brew upgrade` rather than
         // downloading a .dmg (which would desync brew's version tracking).
         if InstallSource.isHomebrewManaged() {
-            let cmd = "brew upgrade --cask whisperdict"
+            let cmd = "brew upgrade --cask pith"
             NSPasteboard.general.clearContents()
             NSPasteboard.general.setString(cmd, forType: .string)
             status("Update v\(release.version) — run: \(cmd) (copied)")
@@ -39,7 +39,7 @@ final class UpdateManager {
         guard let dmgURL = release.dmgURL else {
             // No .dmg asset — fall back to the release page.
             status("Update v\(release.version) available")
-            if let page = URL(string: "https://github.com/sashabedard/WhisperDict/releases/latest") {
+            if let page = URL(string: "https://github.com/sashabedard/Pith/releases/latest") {
                 NSWorkspace.shared.open(page)
             }
             return
@@ -54,7 +54,7 @@ final class UpdateManager {
         }
     }
 
-    /// Downloads `url` to ~/Downloads/WhisperDict-<version>.dmg, overwriting an
+    /// Downloads `url` to ~/Downloads/Pith-<version>.dmg, overwriting an
     /// existing file. Returns the local URL, or nil on failure.
     private func download(_ url: URL, version: String) async -> URL? {
         let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
@@ -63,7 +63,7 @@ final class UpdateManager {
         // crafted tag can't path-traverse out of ~/Downloads.
         let safeVersion = version.unicodeScalars.filter { CharacterSet(charactersIn: "0123456789.").contains($0) }.map(String.init).joined()
         let name = safeVersion.isEmpty ? "latest" : safeVersion
-        let dest = downloads.appendingPathComponent("WhisperDict-\(name).dmg")
+        let dest = downloads.appendingPathComponent("Pith-\(name).dmg")
         guard let (tmp, response) = try? await URLSession.shared.download(from: url),
               let http = response as? HTTPURLResponse, http.statusCode == 200 else { return nil }
         do {

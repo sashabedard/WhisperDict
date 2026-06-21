@@ -59,7 +59,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         prefsItem.target = self
         menu.addItem(prefsItem)
         menu.addItem(.separator())
-        let quit = NSMenuItem(title: "Quit WhisperDict", action: #selector(NSApp.terminate(_:)), keyEquivalent: "q")
+        let quit = NSMenuItem(title: "Quit Pith", action: #selector(NSApp.terminate(_:)), keyEquivalent: "q")
         quit.target = NSApp
         menu.addItem(quit)
     }

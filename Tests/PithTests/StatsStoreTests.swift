@@ -1,9 +1,9 @@
 import XCTest
-@testable import WhisperDict
+@testable import Pith
 
 final class StatsStoreTests: XCTestCase {
 
-    private let suiteName = "WhisperDictTests.StatsStore"
+    private let suiteName = "PithTests.StatsStore"
 
     override func setUp() {
         super.setUp()

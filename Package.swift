@@ -2,23 +2,23 @@
 import PackageDescription
 
 let package = Package(
-    name: "WhisperDict",
+    name: "Pith",
     platforms: [.macOS(.v13)],
     dependencies: [
         .package(url: "https://github.com/argmaxinc/WhisperKit", from: "0.9.0"),
     ],
     targets: [
         .executableTarget(
-            name: "WhisperDict",
+            name: "Pith",
             dependencies: [
                 .product(name: "WhisperKit", package: "WhisperKit"),
             ],
-            path: "Sources/WhisperDict"
+            path: "Sources/Pith"
         ),
         .testTarget(
-            name: "WhisperDictTests",
-            dependencies: ["WhisperDict"],
-            path: "Tests/WhisperDictTests"
+            name: "PithTests",
+            dependencies: ["Pith"],
+            path: "Tests/PithTests"
         ),
     ]
 )

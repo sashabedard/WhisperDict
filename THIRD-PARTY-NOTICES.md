@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-WhisperDict is distributed under the MIT License. It depends on the following
+Pith is distributed under the MIT License. It depends on the following
 open-source components, fetched at build time by Swift Package Manager. Their
 licenses are permissive and compatible with this project.
 

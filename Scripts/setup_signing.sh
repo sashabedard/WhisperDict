@@ -9,7 +9,7 @@
 #
 set -euo pipefail
 
-CERT="WhisperDict Self-Signed"
+CERT="Pith Self-Signed"
 KEYCHAIN="$HOME/Library/Keychains/login.keychain-db"
 
 if security find-identity -v -p codesigning 2>/dev/null | grep -q "$CERT"; then

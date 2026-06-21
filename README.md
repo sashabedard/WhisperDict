@@ -1,13 +1,13 @@
-# WhisperDict 🎙
+# Pith 🎙
 
-[![build](https://github.com/sashabedard/WhisperDict/actions/workflows/build.yml/badge.svg)](https://github.com/sashabedard/WhisperDict/actions/workflows/build.yml)
+[![build](https://github.com/sashabedard/Pith/actions/workflows/build.yml/badge.svg)](https://github.com/sashabedard/Pith/actions/workflows/build.yml)
 ![signed & notarized](https://img.shields.io/badge/signed%20%26%20notarized-Apple%20Developer%20ID-555?logo=apple&logoColor=white)
 ![100% on-device](https://img.shields.io/badge/100%25-on--device-2ea44f)
 
 > **Talk instead of type.** Hold a key, say what you mean, release — your words
 > appear as text in whatever app you're already in. 100% on-device.
 
-![WhisperDict demo — hold a key, speak, release; clean text appears at your cursor](docs/demo.gif)
+![Pith demo — hold a key, speak, release; clean text appears at your cursor](docs/demo.gif)
 
 ### Say it, don't write it
 
@@ -19,7 +19,7 @@ original idea slips away.
 **Speaking keeps the thought whole.** You say it once, the way you'd explain it
 to a person, and it's down on the page before you can talk yourself out of it.
 
-WhisperDict turns that spoken stream into clean text right where your cursor is —
+Pith turns that spoken stream into clean text right where your cursor is —
 your editor, your chat, your prompt box, your notes. Hold **Right-Option**, think
 out loud, release. Nothing leaves your Mac.
 
@@ -30,7 +30,7 @@ Whisper models locally via Core ML.
 
 ## Speak messy, paste clean
 
-Real speech is full of "um"s, "you know"s, and false starts. WhisperDict
+Real speech is full of "um"s, "you know"s, and false starts. Pith
 **cleans it up as you go** — on-device — so what lands at your cursor reads like
 you wrote it, not like you mumbled it:
 
@@ -53,7 +53,7 @@ is at the edge of what a small on-device model does reliably — so treat them a
 **best-effort**, not guaranteed.
 
 This runs on Apple's on-device model, so it needs **macOS 26 + Apple
-Intelligence**. Without them, WhisperDict simply pastes the raw transcript — the
+Intelligence**. Without them, Pith simply pastes the raw transcript — the
 feature switches off gracefully.
 
 ---
@@ -91,7 +91,7 @@ feature switches off gracefully.
 - macOS 13 (Ventura) or later
 - Apple Silicon recommended (Core ML acceleration)
 - **macOS 26 with Apple Intelligence recommended** — unlocks the on-device
-  Smart cleanup. It's the experience WhisperDict is built around, so turning it
+  Smart cleanup. It's the experience Pith is built around, so turning it
   on (System Settings → Apple Intelligence) is worth it.
 - On first launch, grant:
   - **Microphone** access (prompted automatically)
@@ -99,33 +99,33 @@ feature switches off gracefully.
     Accessibility (needed to synthesize ⌘V into other apps)
 - *Optional:* **Smart cleanup** needs macOS 26 with **Apple Intelligence**
   enabled (System Settings → Apple Intelligence). Without it, dictation still
-  works — WhisperDict just pastes the raw transcript.
+  works — Pith just pastes the raw transcript.
 
 ## Install
 
 ### Option A — Homebrew (recommended)
 
 ```bash
-brew install --cask sashabedard/whisperdict/whisperdict
+brew install --cask sashabedard/pith/pith
 ```
 
-WhisperDict is signed with a Developer ID and **notarized by Apple**, so it launches straight away — no Gatekeeper warning, no extra steps. Update with `brew upgrade --cask whisperdict`. On first run, grant Microphone + Accessibility.
+Pith is signed with a Developer ID and **notarized by Apple**, so it launches straight away — no Gatekeeper warning, no extra steps. Update with `brew upgrade --cask pith`. On first run, grant Microphone + Accessibility.
 
 ### Option B — Download
 
-1. Download `WhisperDict-<version>.dmg` from the [**Releases**](../../releases)
+1. Download `Pith-<version>.dmg` from the [**Releases**](../../releases)
    page and open it.
-2. Drag **WhisperDict** into the **Applications** folder.
+2. Drag **Pith** into the **Applications** folder.
 3. Launch it — it's notarized by Apple, so it opens normally and walks you
    through microphone + accessibility permissions.
 
 ### Option C — Build from source
 
 ```bash
-git clone https://github.com/sashabedard/WhisperDict.git
-cd WhisperDict
+git clone https://github.com/sashabedard/Pith.git
+cd Pith
 ./Scripts/build.sh
-open WhisperDict.app
+open Pith.app
 ```
 
 The first transcription downloads the Whisper model from the Hugging Face Hub
@@ -135,21 +135,21 @@ All build and packaging tooling lives in [`Scripts/`](Scripts):
 
 | Script | Purpose |
 | --- | --- |
-| `Scripts/build.sh` | Compile and assemble `WhisperDict.app` |
+| `Scripts/build.sh` | Compile and assemble `Pith.app` |
 | `Scripts/setup_signing.sh` | Create a stable self-signed identity (keeps TCC grants across rebuilds) |
 | `Scripts/make_dmg.sh` | Package the app into a distributable `.dmg` |
 | `Scripts/make_icon.py` · `make_dmg_bg.py` | Regenerate the app icon and DMG artwork |
 
 ## Usage
 
-1. Launch WhisperDict — a `🎙` icon appears in the menu bar.
+1. Launch Pith — a `🎙` icon appears in the menu bar.
 2. Click into any text field.
 3. **Hold Right-Option**, speak, then **release**.
 4. The transcribed text is pasted automatically.
 
 ### Updates & privacy
 
-WhisperDict checks for updates **only** when you click **Check for updates…** in
+Pith checks for updates **only** when you click **Check for updates…** in
 the menu, or if you turn on **Check for updates automatically** (off by default).
 That check is a single public version lookup on GitHub — it sends **no data about
 you**. When a newer release exists, the app downloads the `.dmg` to your Downloads

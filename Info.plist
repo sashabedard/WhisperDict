@@ -5,28 +5,28 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>WhisperDict</string>
+	<string>Pith</string>
 	<key>CFBundleExecutable</key>
-	<string>WhisperDict</string>
+	<string>Pith</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.sasha.whisperdict</string>
+	<string>com.sasha.pith</string>
 	<key>CFBundleName</key>
-	<string>WhisperDict</string>
+	<string>Pith</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.2.5</string>
+	<string>1.0.0</string>
 	<key>CFBundleVersion</key>
-	<string>7</string>
+	<string>8</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>13.0</string>
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>WhisperDict synthesizes Cmd+V to paste transcribed text into the focused field.</string>
+	<string>Pith synthesizes Cmd+V to paste transcribed text into the focused field.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>WhisperDict needs microphone access for voice dictation.</string>
+	<string>Pith needs microphone access for voice dictation.</string>
 </dict>
 </plist>

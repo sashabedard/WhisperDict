@@ -1,9 +1,9 @@
-# dmgbuild settings for WhisperDict — see ./Scripts/make_dmg.sh
+# dmgbuild settings for Pith — see ./Scripts/make_dmg.sh
 # https://dmgbuild.readthedocs.io
 # Paths come in via -D defines because dmgbuild execs this file without __file__.
 import os.path
 
-application = defines.get("app", "WhisperDict.app")
+application = defines.get("app", "Pith.app")
 appname = os.path.basename(application)
 
 format = "UDZO"                       # compressed, read-only

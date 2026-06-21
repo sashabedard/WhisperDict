@@ -196,7 +196,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 let profile = UserSettings.shared.profile
                 let formatLists = AppContext.supportsRichLists(bundleID: bundleID)
                 output = await withTaskGroup(of: String?.self) { group in
-                    group.addTask { await self.enhancer.enhance(text, style: style, vocabulary: vocab, profile: profile, formatLists: formatLists) }
+                    group.addTask { await self.enhancer.enhance(text, style: style, vocabulary: vocab, profile: profile, formatLists: formatLists).text }
                     group.addTask { try? await Task.sleep(nanoseconds: 10_000_000_000); return nil }
                     let first = await group.next() ?? nil
                     group.cancelAll()
@@ -295,7 +295,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
 
-            let result = await self.enhancer.runCommand(instruction: instruction, on: target)
+            let result = await self.enhancer.runCommand(instruction: instruction, on: target).text
 
             await MainActor.run { [self] in
                 // Deterministic AX replacement first; fall back to ⌘V paste.

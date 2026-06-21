@@ -2,7 +2,7 @@ import XCTest
 @testable import Pith
 
 /// A controllable backend for testing the façade's fallback logic.
-private struct FakeBackend: EnhanceBackend {
+private struct FakeBackend: EnhanceBackend, @unchecked Sendable {
     let ready: Bool
     let output: String?
     var isReady: Bool { ready }
@@ -31,5 +31,37 @@ final class EnhancerFacadeTests: XCTestCase {
     func testReadyButNilFallsBackToRaw() async {
         let out = await resolve(FakeBackend(ready: true, output: nil), raw: "messy")
         XCTAssertEqual(out, "messy")
+    }
+
+    // BYOK selected + ready + produced output → that output, no warning.
+    func testByokOutputNoWarning() async {
+        let e = Enhancer(apple: FakeBackend(ready: true, output: "apple"),
+                         byokProvider: { FakeBackend(ready: true, output: "byok") })
+        let r = await e.enhance("raw")
+        XCTAssertEqual(r.text, "byok"); XCTAssertNil(r.warning)
+    }
+    func testByokFailureFallsBackToAppleWithWarning() async {
+        let e = Enhancer(apple: FakeBackend(ready: true, output: "apple"),
+                         byokProvider: { FakeBackend(ready: true, output: nil) })
+        let r = await e.enhance("raw")
+        XCTAssertEqual(r.text, "apple"); XCTAssertEqual(r.warning, "Enhance endpoint failed")
+    }
+    func testByokFailureNoAppleFallsBackToRawWithWarning() async {
+        let e = Enhancer(apple: FakeBackend(ready: false, output: nil),
+                         byokProvider: { FakeBackend(ready: true, output: nil) })
+        let r = await e.enhance("raw")
+        XCTAssertEqual(r.text, "raw"); XCTAssertEqual(r.warning, "Enhance endpoint failed")
+    }
+    func testAppleOnlyNoWarning() async {
+        let e = Enhancer(apple: FakeBackend(ready: true, output: "apple"),
+                         byokProvider: { nil })
+        let r = await e.enhance("raw")
+        XCTAssertEqual(r.text, "apple"); XCTAssertNil(r.warning)
+    }
+    func testRunCommandByokFailureWarns() async {
+        let e = Enhancer(apple: FakeBackend(ready: true, output: "apple"),
+                         byokProvider: { FakeBackend(ready: true, output: nil) })
+        let r = await e.runCommand(instruction: "x", on: "raw")
+        XCTAssertEqual(r.text, "apple"); XCTAssertEqual(r.warning, "Enhance endpoint failed")
     }
 }

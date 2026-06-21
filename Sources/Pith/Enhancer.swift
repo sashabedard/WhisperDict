@@ -16,41 +16,65 @@ enum EnhanceStyle: String {
     case faithful, polished, email, code
 }
 
+struct EnhanceResult: Sendable { let text: String; let warning: String? }
+
 /// Façade over the Enhance backends. AppDelegate/Preferences call this; it picks
 /// the active backend per UserSettings and falls back Apple → raw.
 actor Enhancer {
-    private let apple = AppleEnhanceBackend()
-    // Phase B adds: private let mlx = MLXEnhanceBackend()
+    static let warningText = "Enhance endpoint failed"
+
+    private let apple: EnhanceBackend
+    /// Returns a chosen+ready BYOK backend, or nil. Injected for tests; default
+    /// reads UserSettings + Keychain.
+    private let byokProvider: @Sendable () -> EnhanceBackend?
+
+    init(apple: EnhanceBackend = AppleEnhanceBackend(),
+         byokProvider: @Sendable @escaping () -> EnhanceBackend? = Enhancer.settingsByok) {
+        self.apple = apple
+        self.byokProvider = byokProvider
+    }
 
     /// The Apple-specific availability, for the "enable Apple Intelligence" nudge.
     static var availabilityState: EnhanceAvailability { AppleEnhanceBackend.availabilityState }
 
-    /// True when the effective backend (selected, or Apple fallback) can run.
+    /// True when SOME backend can run: Apple available, or BYOK configured.
     static var isAvailable: Bool {
-        // Phase A: only the Apple backend exists. Phase B updates this to also
-        // return true when the selected MLX model is downloaded.
-        AppleEnhanceBackend.isAvailable
+        if AppleEnhanceBackend.isAvailable { return true }
+        return settingsByok() != nil
     }
 
-    /// The effective backend for this call: the selected one if ready, else Apple.
-    private func effectiveBackend() async -> EnhanceBackend? {
-        // Phase A: always Apple. Phase B resolves UserSettings.enhanceBackend.
-        apple.isReady ? apple : nil
+    /// Build the BYOK backend from settings, or nil if not selected/ready.
+    static func settingsByok() -> EnhanceBackend? {
+        guard UserSettings.shared.enhanceBackend == "openai" else { return nil }
+        let b = OpenAICompatibleEnhanceBackend(
+            endpoint: UserSettings.shared.openAIEndpoint,
+            model: UserSettings.shared.openAIModel,
+            apiKey: KeychainStore().get("apiKey") ?? "")
+        return b.isReady ? b : nil
     }
 
     func warmup() async {
-        await effectiveBackend()?.warmup()
+        if byokProvider() != nil { return }
+        await apple.warmup()
     }
 
-    func enhance(_ raw: String, style: EnhanceStyle, vocabulary: [String] = [],
-                 profile: String = "", formatLists: Bool = false) async -> String {
-        guard let backend = await effectiveBackend() else { return raw }
-        return await backend.enhance(raw, style: style, vocabulary: vocabulary,
-                                     profile: profile, formatLists: formatLists) ?? raw
+    func enhance(_ raw: String, style: EnhanceStyle = .faithful, vocabulary: [String] = [],
+                 profile: String = "", formatLists: Bool = false) async -> EnhanceResult {
+        await dispatch(raw: raw) { await $0.enhance(raw, style: style, vocabulary: vocabulary,
+                                                    profile: profile, formatLists: formatLists) }
     }
 
-    func runCommand(instruction: String, on text: String) async -> String {
-        guard let backend = await effectiveBackend() else { return text }
-        return await backend.runCommand(instruction: instruction, on: text) ?? text
+    func runCommand(instruction: String, on text: String) async -> EnhanceResult {
+        await dispatch(raw: text) { await $0.runCommand(instruction: instruction, on: text) }
+    }
+
+    private func dispatch(raw: String, _ run: (EnhanceBackend) async -> String?) async -> EnhanceResult {
+        if let byok = byokProvider(), byok.isReady {
+            if let out = await run(byok) { return EnhanceResult(text: out, warning: nil) }
+            if apple.isReady, let out = await run(apple) { return EnhanceResult(text: out, warning: Self.warningText) }
+            return EnhanceResult(text: raw, warning: Self.warningText)
+        }
+        if apple.isReady, let out = await run(apple) { return EnhanceResult(text: out, warning: nil) }
+        return EnhanceResult(text: raw, warning: nil)
     }
 }

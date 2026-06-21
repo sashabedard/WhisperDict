@@ -104,10 +104,10 @@ feature switches off gracefully.
 ### Option A — Homebrew (recommended)
 
 ```bash
-brew install --cask sashabedard/whisperdict/whisperdict
+brew install --cask --no-quarantine sashabedard/whisperdict/whisperdict
 ```
 
-Homebrew removes the quarantine flag, so the app launches with **no "Open Anyway" prompt** — no notarization needed. Update with `brew upgrade --cask whisperdict`. On first run, grant Microphone + Accessibility.
+The app is ad-hoc signed (not notarized), so the `--no-quarantine` flag is what lets it launch without the macOS "could not verify" prompt. (Without it, Homebrew quarantines the app and you'll hit Gatekeeper — see Option B's bypass.) Update with `brew upgrade --cask whisperdict`. On first run, grant Microphone + Accessibility.
 
 ### Option B — Download
 

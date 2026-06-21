@@ -32,6 +32,11 @@ private let enhanceStyles: [(id: String, label: String)] = [
     ("email",    "Email — professional tone"),
 ]
 
+private let enhanceBackends: [(id: String, label: String)] = [
+    ("apple",  "Apple (on-device)"),
+    ("openai", "Custom — OpenAI-compatible"),
+]
+
 /// One-line guidance shown under the model picker so a first-time user knows
 /// which to pick. Distil is English-only — important for non-English users.
 private let modelNotes: [String: String] = [
@@ -59,6 +64,12 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     private let vocabField    = NSTextField()
     private let profileField  = ProfileTextField()
     private let snippetsField = ProfileTextField()
+    private let backendPopup  = NSPopUpButton()
+    private let endpointField = NSTextField()
+    private let modelField    = NSTextField()
+    private let apiKeyField   = NSSecureTextField()
+    private let testButton    = NSButton(title: "Test", target: nil, action: nil)
+    private let byokNote      = NSTextField(wrappingLabelWithString: "")
 
     // MARK: Stats dashboard
     private let statsDashboard = StatsDashboardView()
@@ -340,13 +351,61 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
             profileField.heightAnchor.constraint(equalToConstant: 60).isActive = true
         }
 
-        return makeCard(rows: [
+        configurePopup(backendPopup,
+                       items: enhanceBackends.map { $0.label },
+                       selectedIndex: enhanceBackends.firstIndex { $0.id == UserSettings.shared.enhanceBackend } ?? 0,
+                       action: #selector(backendChanged))
+
+        endpointField.stringValue = UserSettings.shared.openAIEndpoint
+        endpointField.placeholderString = "https://openrouter.ai/api/v1"
+        endpointField.delegate = self
+        endpointField.controlSize = .large
+        endpointField.font = .systemFont(ofSize: 13)
+        endpointField.translatesAutoresizingMaskIntoConstraints = false
+
+        modelField.stringValue = UserSettings.shared.openAIModel
+        modelField.placeholderString = "openai/gpt-4o-mini"
+        modelField.delegate = self
+        modelField.controlSize = .large
+        modelField.font = .systemFont(ofSize: 13)
+        modelField.translatesAutoresizingMaskIntoConstraints = false
+
+        apiKeyField.stringValue = KeychainStore().get("apiKey") ?? ""
+        apiKeyField.placeholderString = "API key (optional for local servers)"
+        apiKeyField.delegate = self
+        apiKeyField.controlSize = .large
+        apiKeyField.font = .systemFont(ofSize: 13)
+        apiKeyField.translatesAutoresizingMaskIntoConstraints = false
+
+        testButton.target = self
+        testButton.action = #selector(testByokClicked)
+        testButton.bezelStyle = .rounded
+        testButton.translatesAutoresizingMaskIntoConstraints = false
+
+        byokNote.stringValue = "⚠️ Your transcripts are sent to this endpoint. On-device privacy applies only to the Apple option."
+        byokNote.font = .systemFont(ofSize: 11)
+        byokNote.textColor = .secondaryLabelColor
+        byokNote.translatesAutoresizingMaskIntoConstraints = false
+        updateByokNote()
+
+        var rows: [(String, NSView)] = [
             ("Enhance",    enhanceSwitch),
             ("Auto style", perAppSwitch),
             ("Style",      styleCol),
             ("Vocabulary", vocabField),
             ("About you",  profileField),
-        ])
+            ("Engine",     backendPopup),
+        ]
+        if UserSettings.shared.enhanceBackend == "openai" {
+            rows += [
+                ("Endpoint", endpointField),
+                ("Model",    modelField),
+                ("API key",  apiKeyField),
+                ("",         testButton),
+                ("",         byokNote),
+            ]
+        }
+        return makeCard(rows: rows)
     }
 
     private func buildCommandsTab() -> NSView {
@@ -531,9 +590,18 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     }
 
     func controlTextDidEndEditing(_ obj: Notification) {
-        guard (obj.object as? NSTextField) === vocabField else { return }
-        UserSettings.shared.vocabulary = vocabField.stringValue
-        NotificationCenter.default.post(name: .enhanceSettingsChanged, object: nil)
+        guard let field = obj.object as? NSTextField else { return }
+        if field === vocabField {
+            UserSettings.shared.vocabulary = vocabField.stringValue
+            NotificationCenter.default.post(name: .enhanceSettingsChanged, object: nil)
+        } else if field === endpointField {
+            UserSettings.shared.openAIEndpoint = endpointField.stringValue
+            updateByokNote()
+        } else if field === modelField {
+            UserSettings.shared.openAIModel = modelField.stringValue
+        } else if field === apiKeyField {
+            KeychainStore().set(apiKeyField.stringValue, account: "apiKey")
+        }
     }
 
     func textDidEndEditing(_ notification: Notification) {
@@ -549,6 +617,30 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     @objc private func styleChanged() {
         UserSettings.shared.enhanceStyle = enhanceStyles[stylePopup.indexOfSelectedItem].id
         NotificationCenter.default.post(name: .enhanceSettingsChanged, object: nil)
+    }
+
+    @objc private func backendChanged() {
+        UserSettings.shared.enhanceBackend = enhanceBackends[backendPopup.indexOfSelectedItem].id
+        tabViewCache[1] = nil
+        selectTab(1)
+    }
+
+    private func updateByokNote() {
+        let remote = !UserSettings.shared.openAIEndpoint.isEmpty && !Endpoint.isLocal(UserSettings.shared.openAIEndpoint)
+        byokNote.isHidden = !(UserSettings.shared.enhanceBackend == "openai" && remote)
+    }
+
+    @objc private func testByokClicked() {
+        testButton.isEnabled = false
+        testButton.title = "Testing…"
+        let backend = OpenAICompatibleEnhanceBackend(endpoint: endpointField.stringValue,
+                                                     model: modelField.stringValue,
+                                                     apiKey: apiKeyField.stringValue)
+        Task { @MainActor in
+            let ok = await backend.enhance("ping", style: .faithful, vocabulary: [], profile: "", formatLists: false) != nil
+            self.testButton.title = ok ? "✓ Connected" : "✗ Failed"
+            self.testButton.isEnabled = true
+        }
     }
 
     @objc private func hotkeyPopupChanged() {

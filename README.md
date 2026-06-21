@@ -5,6 +5,8 @@
 > **Talk instead of type.** Hold a key, say what you mean, release — your words
 > appear as text in whatever app you're already in. 100% on-device.
 
+![WhisperDict demo — hold a key, speak, release; clean text appears at your cursor](docs/demo.gif)
+
 ### Say it, don't write it
 
 It's almost always easier to *describe* what you want out loud than to write it.

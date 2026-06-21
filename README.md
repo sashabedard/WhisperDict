@@ -99,7 +99,15 @@ feature switches off gracefully.
 
 ## Install
 
-### Option A — Download (recommended)
+### Option A — Homebrew (recommended)
+
+```bash
+brew install --cask sashabedard/whisperdict/whisperdict
+```
+
+Homebrew removes the quarantine flag, so the app launches with **no "Open Anyway" prompt** — no notarization needed. Update with `brew upgrade --cask whisperdict`. On first run, grant Microphone + Accessibility.
+
+### Option B — Download
 
 1. Grab the latest `WhisperDict.app` from the [**Releases**](../../releases)
    page and unzip it.
@@ -116,7 +124,7 @@ feature switches off gracefully.
 > Prefer the command line? `xattr -dr com.apple.quarantine /path/to/WhisperDict.app`
 > removes the quarantine flag so it opens directly.
 
-### Option B — Build from source
+### Option C — Build from source
 
 ```bash
 git clone https://github.com/sashabedard/WhisperDict.git

@@ -144,6 +144,15 @@ All build and packaging tooling lives in [`Scripts/`](Scripts):
 3. **Hold Right-Option**, speak, then **release**.
 4. The transcribed text is pasted automatically.
 
+### Updates & privacy
+
+WhisperDict checks for updates **only** when you click **Check for updates…** in
+the menu, or if you turn on **Check for updates automatically** (off by default).
+That check is a single public version lookup on GitHub — it sends **no data about
+you**. When a newer release exists, the app downloads the `.dmg` to your Downloads
+and reveals it in Finder; you install it the same way as the first time.
+Everything else stays 100% on-device.
+
 ## License
 
 [MIT](LICENSE) © 2026 Sasha Bedard

@@ -51,6 +51,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     /// Parallel to the popup's items: UID per row; index 0 is "" (system default).
     private var inputDeviceUIDs: [String] = []
     private let modelCaption = NSTextField(wrappingLabelWithString: "")
+    private let autoUpdateSwitch = NSSwitch()
     private let enhanceSwitch = NSSwitch()
     private let perAppSwitch   = NSSwitch()
     private let stylePopup    = NSPopUpButton()
@@ -273,11 +274,27 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
                        selectedIndex: mic.index,
                        action: #selector(inputDeviceChanged))
 
+        autoUpdateSwitch.state = UserSettings.shared.autoCheckUpdates ? .on : .off
+        autoUpdateSwitch.target = self
+        autoUpdateSwitch.action = #selector(autoUpdateToggled)
+
+        let updateCaption = NSTextField(wrappingLabelWithString:
+            "Off by default. The only time WhisperDict touches the network: an optional version check against GitHub — no data about you is sent.")
+        updateCaption.font = .systemFont(ofSize: 11)
+        updateCaption.textColor = .secondaryLabelColor
+
+        let updateCol = NSStackView(views: [autoUpdateSwitch, updateCaption])
+        updateCol.orientation = .vertical
+        updateCol.alignment = .leading
+        updateCol.spacing = 4
+        updateCaption.widthAnchor.constraint(equalTo: updateCol.widthAnchor).isActive = true
+
         return makeCard(rows: [
             ("Shortcut",   hotkeyPopup),
             ("Language",   langPopup),
             ("Model",      modelCol),
             ("Microphone", inputPopup),
+            ("Updates",    updateCol),
         ])
     }
 
@@ -492,6 +509,10 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     @objc private func languageChanged() {
         UserSettings.shared.language = languages[langPopup.indexOfSelectedItem].code
         // No reload needed — Transcriber reads the language on every call.
+    }
+
+    @objc private func autoUpdateToggled() {
+        UserSettings.shared.autoCheckUpdates = autoUpdateSwitch.state == .on
     }
 
     @objc private func enhanceToggled() {

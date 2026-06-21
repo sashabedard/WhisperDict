@@ -10,6 +10,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private let aiNudgeSeparator = NSMenuItem.separator()
     private var historyItems: [NSMenuItem] = []
     private var onPreferences: (() -> Void)?
+    private var onCheckUpdates: (() -> Void)?
 
     // Two leading items (nudge + its separator) sit above the status line, so
     // history inserts after: nudge, nudgeSep, status, sep = index 4.
@@ -24,8 +25,9 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         renderHistory()
     }
 
-    func configure(onPreferences: @escaping () -> Void) {
+    func configure(onPreferences: @escaping () -> Void, onCheckUpdates: @escaping () -> Void) {
         self.onPreferences = onPreferences
+        self.onCheckUpdates = onCheckUpdates
     }
 
     func setStatus(_ text: String, icon: String = "🎙") {
@@ -50,6 +52,9 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         // history items get inserted between here…
         menu.addItem(historySectionEnd)
         // …and here.
+        let updatesItem = NSMenuItem(title: "Check for updates…", action: #selector(checkUpdatesClicked), keyEquivalent: "")
+        updatesItem.target = self
+        menu.addItem(updatesItem)
         let prefsItem = NSMenuItem(title: "Preferences…", action: #selector(openPreferences), keyEquivalent: ",")
         prefsItem.target = self
         menu.addItem(prefsItem)
@@ -87,6 +92,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         guard let text = sender.representedObject as? String else { return }
         PasteHelper.paste(text)
     }
+
+    @objc private func checkUpdatesClicked() { onCheckUpdates?() }
 
     @objc private func openPreferences() {
         onPreferences?()

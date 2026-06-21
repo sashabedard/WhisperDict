@@ -84,6 +84,18 @@ final class UserSettings {
         set { UserDefaults.standard.set(newValue, forKey: "inputDeviceUID") }
     }
 
+    /// Whether to check GitHub for a newer release at launch. Default OFF — this
+    /// is the only network access the app makes.
+    var autoCheckUpdates: Bool {
+        get { UserDefaults.standard.bool(forKey: "autoCheckUpdates") }   // default false
+        set { UserDefaults.standard.set(newValue, forKey: "autoCheckUpdates") }
+    }
+    /// Timestamp of the last auto update check, to throttle to once per day.
+    var lastUpdateCheck: Date? {
+        get { UserDefaults.standard.object(forKey: "lastUpdateCheck") as? Date }
+        set { UserDefaults.standard.set(newValue, forKey: "lastUpdateCheck") }
+    }
+
     /// Which Enhance engine to use: "apple" (built-in, default) or "mlx" (Gemma).
     var enhanceBackend: String {
         get { UserDefaults.standard.string(forKey: "enhanceBackend") ?? "apple" }

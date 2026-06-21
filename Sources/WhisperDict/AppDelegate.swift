@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var commandSelection: String?
     private var savedClipboard: String?
     private var commandUsedClipboard = false
+    private let updater     = UpdateManager()
     private let recorder    = AudioRecorder()
     private let transcriber = Transcriber()
     private let enhancer    = Enhancer()
@@ -28,7 +29,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ = AXIsProcessTrustedWithOptions(opts)
 
         menuBar = MenuBarController()
-        menuBar.configure(onPreferences: { [weak self] in self?.showPreferences() })
+        menuBar.configure(
+            onPreferences: { [weak self] in self?.showPreferences() },
+            onCheckUpdates: { [weak self] in self?.checkForUpdates() }
+        )
 
         hotkey = HotkeyManager(
             onPress:   { [weak self] in self?.startRecording()    },
@@ -68,6 +72,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             startWarmup()
         } else {
             showOnboarding()
+        }
+
+        Task { [weak self] in
+            await self?.updater.check(manual: false) { [weak self] line in
+                self?.menuBar.setStatus(line)
+            }
+        }
+    }
+
+    func checkForUpdates() {
+        Task { [weak self] in
+            await self?.updater.check(manual: true) { [weak self] line in
+                self?.menuBar.setStatus(line)
+            }
         }
     }
 

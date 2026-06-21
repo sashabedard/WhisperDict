@@ -8,7 +8,7 @@
 #      certificate (Xcode → Settings → Accounts → Manage Certificates → +).
 #   2. Store notary credentials once (creates a keychain profile):
 #        xcrun notarytool store-credentials "whisperdict" \
-#          --apple-id "you@example.com" --team-id 5X5FP2FYT2 \
+#          --apple-id "sasha.touille@hotmail.fr" --team-id 7CN9557P92 \
 #          --password "<app-specific-password from appleid.apple.com>"
 #
 # Usage:

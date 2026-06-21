@@ -106,6 +106,17 @@ final class UserSettings {
         get { UserDefaults.standard.string(forKey: "mlxModelVariant") ?? "e4b" }
         set { UserDefaults.standard.set(newValue, forKey: "mlxModelVariant") }
     }
+    /// BYOK OpenAI-compatible endpoint base URL (e.g. https://openrouter.ai/api/v1
+    /// or http://localhost:11434/v1). Empty = not configured.
+    var openAIEndpoint: String {
+        get { UserDefaults.standard.string(forKey: "openAIEndpoint") ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: "openAIEndpoint") }
+    }
+    /// BYOK model id (e.g. openai/gpt-4o-mini, llama3.1). Empty = not configured.
+    var openAIModel: String {
+        get { UserDefaults.standard.string(forKey: "openAIModel") ?? "" }
+        set { UserDefaults.standard.set(newValue, forKey: "openAIModel") }
+    }
 
     /// When true, the Enhance style is chosen from the frontmost app (email tone
     /// in mail clients, code style in editors), falling back to `enhanceStyle`.

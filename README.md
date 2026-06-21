@@ -1,6 +1,8 @@
 # WhisperDict 🎙
 
 [![build](https://github.com/sashabedard/WhisperDict/actions/workflows/build.yml/badge.svg)](https://github.com/sashabedard/WhisperDict/actions/workflows/build.yml)
+![signed & notarized](https://img.shields.io/badge/signed%20%26%20notarized-Apple%20Developer%20ID-555?logo=apple&logoColor=white)
+![100% on-device](https://img.shields.io/badge/100%25-on--device-2ea44f)
 
 > **Talk instead of type.** Hold a key, say what you mean, release — your words
 > appear as text in whatever app you're already in. 100% on-device.

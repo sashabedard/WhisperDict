@@ -159,8 +159,12 @@ final class AudioRecorder {
         onBands = nil  // paired with AppDelegate.startRecording(); cleared so no stale callbacks fire between sessions
         lock.lock()
         defer { lock.unlock() }
-        let maxSamples = 16_000 * 30  // 30 seconds at 16 kHz
-        let result = samples.count > maxSamples ? Array(samples.suffix(maxSamples)) : samples
+        // Cap at 5 minutes as a runaway guard (held key, forgotten recording).
+        // WhisperKit windows long audio itself and Transcriber joins the windows,
+        // so normal multi-paragraph dictation is no longer truncated. If the cap
+        // IS hit, keep the START (prefix) — losing the tail beats losing the intro.
+        let maxSamples = 16_000 * 300  // 5 minutes at 16 kHz
+        let result = samples.count > maxSamples ? Array(samples.prefix(maxSamples)) : samples
         samples.removeAll()
         return result
     }

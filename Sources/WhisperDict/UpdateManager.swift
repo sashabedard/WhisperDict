@@ -26,6 +26,16 @@ final class UpdateManager {
             return
         }
 
+        // If Homebrew manages this app, defer to `brew upgrade` rather than
+        // downloading a .dmg (which would desync brew's version tracking).
+        if InstallSource.isHomebrewManaged() {
+            let cmd = "brew upgrade --cask whisperdict"
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(cmd, forType: .string)
+            status("Update v\(release.version) — run: \(cmd) (copied)")
+            return
+        }
+
         guard let dmgURL = release.dmgURL else {
             // No .dmg asset — fall back to the release page.
             status("Update v\(release.version) available")

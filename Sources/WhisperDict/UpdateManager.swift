@@ -49,7 +49,11 @@ final class UpdateManager {
     private func download(_ url: URL, version: String) async -> URL? {
         let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Downloads")
-        let dest = downloads.appendingPathComponent("WhisperDict-\(version).dmg")
+        // Sanitize: the version comes from a GitHub tag; keep only digits/dots so a
+        // crafted tag can't path-traverse out of ~/Downloads.
+        let safeVersion = version.unicodeScalars.filter { CharacterSet(charactersIn: "0123456789.").contains($0) }.map(String.init).joined()
+        let name = safeVersion.isEmpty ? "latest" : safeVersion
+        let dest = downloads.appendingPathComponent("WhisperDict-\(name).dmg")
         guard let (tmp, response) = try? await URLSession.shared.download(from: url),
               let http = response as? HTTPURLResponse, http.statusCode == 200 else { return nil }
         do {

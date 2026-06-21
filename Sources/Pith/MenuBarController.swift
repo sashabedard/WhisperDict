@@ -18,7 +18,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     override init() {
         super.init()
-        statusItem.button?.title = "🎙"
+        applyIcon("🎙")
         buildMenuOnce()
         menu.delegate = self
         statusItem.menu = menu
@@ -30,8 +30,36 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         self.onCheckUpdates = onCheckUpdates
     }
 
+    // Idle/state glyphs as monochrome SF Symbols (template images that adapt to
+    // light/dark + menu-bar tint). The idle dot echoes the app's "core" icon.
+    private static let symbolForEmoji: [String: String] = [
+        "🎙": "smallcircle.filled.circle",   // idle / ready
+        "🔴": "record.circle",               // recording
+        "⏳": "circle.dotted",               // loading model / transcribing
+        "✨": "sparkles",                    // enhancing / running command
+        "🪄": "wand.and.stars",              // command mode
+        "⚠️": "exclamationmark.triangle",    // error / permission warning
+    ]
+
+    /// Render a menu-bar glyph. Known states map to an SF Symbol template image;
+    /// anything else falls back to showing the raw string as the button title.
+    private func applyIcon(_ icon: String) {
+        guard let button = statusItem.button else { return }
+        if let symbol = Self.symbolForEmoji[icon],
+           let image = NSImage(systemSymbolName: symbol, accessibilityDescription: icon) {
+            let config = NSImage.SymbolConfiguration(pointSize: 15, weight: .regular)
+            let rendered = image.withSymbolConfiguration(config) ?? image
+            rendered.isTemplate = true
+            button.image = rendered
+            button.title = ""
+        } else {
+            button.image = nil
+            button.title = icon
+        }
+    }
+
     func setStatus(_ text: String, icon: String = "🎙") {
-        statusItem.button?.title = icon
+        applyIcon(icon)
         statusMenuItem.title = text
     }
 

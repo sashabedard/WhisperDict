@@ -30,25 +30,19 @@ def draw_icon(size: int) -> Image.Image:
 
     draw = ImageDraw.Draw(img)
 
-    # --- Waveform: 5 vertical bars, rounded caps, symmetric heights ---
-    n_bars   = 5
-    heights  = [0.22, 0.40, 0.58, 0.40, 0.22]   # normalized to canvas
-    bar_w    = s * 0.075
-    gap      = s * 0.055
-    total_w  = n_bars * bar_w + (n_bars - 1) * gap
-    x0       = (s - total_w) / 2
-    cy       = s * 0.5
-
-    for i, h_norm in enumerate(heights):
-        bh   = s * h_norm
-        bx   = x0 + i * (bar_w + gap)
-        by   = cy - bh / 2
-        alpha = 240
-        draw.rounded_rectangle(
-            [(bx, by), (bx + bar_w, by + bh)],
-            radius=bar_w / 2,
-            fill=(255, 255, 255, alpha),
+    # --- "Core": the pith — a solid center radiating two rings ---
+    cx = cy = s * 0.5
+    # Radiating rings (outer fainter, like sound emanating from the core)
+    for r_norm, alpha in [(0.30, 150), (0.42, 80)]:
+        r = s * r_norm
+        draw.ellipse(
+            [(cx - r, cy - r), (cx + r, cy + r)],
+            outline=(255, 255, 255, alpha),
+            width=max(1, int(s * 0.016)),
         )
+    # The core itself
+    r = s * 0.155
+    draw.ellipse([(cx - r, cy - r), (cx + r, cy + r)], fill=(255, 255, 255, 255))
 
     return img
 

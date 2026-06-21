@@ -186,6 +186,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // Optional on-device cleanup. Races the LLM against a 10s timeout;
             // on timeout or any failure it falls back to the raw transcript.
             var output = text
+            var enhanceWarning: String? = nil
             if !text.isEmpty, UserSettings.shared.enhanceEnabled, Enhancer.isAvailable {
                 await MainActor.run { [self] in self.menuBar.setStatus("Enhancing…", icon: "✨") }
                 let userStyle = EnhanceStyle(rawValue: UserSettings.shared.enhanceStyle) ?? .faithful
@@ -195,13 +196,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 let vocab = UserSettings.shared.vocabularyTerms
                 let profile = UserSettings.shared.profile
                 let formatLists = AppContext.supportsRichLists(bundleID: bundleID)
-                output = await withTaskGroup(of: String?.self) { group in
-                    group.addTask { await self.enhancer.enhance(text, style: style, vocabulary: vocab, profile: profile, formatLists: formatLists).text }
+                let result: EnhanceResult = await withTaskGroup(of: EnhanceResult?.self) { group in
+                    group.addTask { await self.enhancer.enhance(text, style: style, vocabulary: vocab, profile: profile, formatLists: formatLists) }
                     group.addTask { try? await Task.sleep(nanoseconds: 10_000_000_000); return nil }
                     let first = await group.next() ?? nil
                     group.cancelAll()
-                    return first ?? text
+                    return first ?? EnhanceResult(text: text, warning: nil)
                 }
+                output = result.text
+                enhanceWarning = result.warning
             } else if !text.isEmpty {
                 // Enhance is off/unavailable: guarantee fillers are still removed.
                 output = TextCleanup.stripFillers(text, language: UserSettings.shared.language)
@@ -211,6 +214,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // Intelligence) so the model can't reword a canned expansion.
             output = SnippetExpander.expand(output, snippets: UserSettings.shared.snippets)
             let finalText = output   // immutable capture across the actor hop
+            let warn = enhanceWarning  // immutable capture for MainActor closure
 
             await MainActor.run { [self] in
                 if !finalText.isEmpty {
@@ -224,6 +228,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     self.menuBar.refreshHistory()
                     if pasted {
                         self.lastDictation = finalText
+                        if let w = warn { self.menuBar.setStatus("⚠️ \(w)", icon: "⚠️") }
                         let preview = finalText.count <= 48 ? finalText : String(finalText.prefix(45)) + "…"
                         self.menuBar.setStatus("✓ \(preview)")
                     } else {
@@ -295,18 +300,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
 
-            let result = await self.enhancer.runCommand(instruction: instruction, on: target).text
+            let cmd = await self.enhancer.runCommand(instruction: instruction, on: target)
 
             await MainActor.run { [self] in
                 // Deterministic AX replacement first; fall back to ⌘V paste.
-                var landed = TextReplacer.replaceFocusedSelection(with: result)
+                var landed = TextReplacer.replaceFocusedSelection(with: cmd.text)
                 if !landed {
                     // The clipboard to restore after the synthetic paste: on the ⌘C
                     // capture path the user's original was saved before ⌘C; on the AX
                     // capture path the clipboard was untouched, so snapshot it now
                     // (before PasteHelper.paste overwrites it).
                     let toRestore = self.commandUsedClipboard ? savedClip : NSPasteboard.general.string(forType: .string)
-                    landed = PasteHelper.paste(result)
+                    landed = PasteHelper.paste(cmd.text)
                     if landed, let toRestore {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                             let pb = NSPasteboard.general
@@ -316,8 +321,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     }
                 }
                 if landed {
-                    self.lastDictation = result
+                    self.lastDictation = cmd.text
                     StatsStore.recordCommand(instruction: instruction)
+                    if let w = cmd.warning { self.menuBar.setStatus("⚠️ \(w)", icon: "⚠️") }
                     self.menuBar.setStatus("✓ edited")
                 } else {
                     self.menuBar.setStatus("⚠️ Enable Accessibility to auto-paste (text copied)", icon: "⚠️")

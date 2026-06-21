@@ -84,6 +84,17 @@ final class UserSettings {
         set { UserDefaults.standard.set(newValue, forKey: "inputDeviceUID") }
     }
 
+    /// Which Enhance engine to use: "apple" (built-in, default) or "mlx" (Gemma).
+    var enhanceBackend: String {
+        get { UserDefaults.standard.string(forKey: "enhanceBackend") ?? "apple" }
+        set { UserDefaults.standard.set(newValue, forKey: "enhanceBackend") }
+    }
+    /// MLX model variant when enhanceBackend == "mlx": "e2b" or "e4b" (default).
+    var mlxModelVariant: String {
+        get { UserDefaults.standard.string(forKey: "mlxModelVariant") ?? "e4b" }
+        set { UserDefaults.standard.set(newValue, forKey: "mlxModelVariant") }
+    }
+
     /// When true, the Enhance style is chosen from the frontmost app (email tone
     /// in mail clients, code style in editors), falling back to `enhanceStyle`.
     var perAppContextEnabled: Bool {

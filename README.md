@@ -105,27 +105,17 @@ feature switches off gracefully.
 
 ```bash
 brew install --cask sashabedard/whisperdict/whisperdict
-xattr -dr com.apple.quarantine /Applications/WhisperDict.app
 ```
 
-The app is ad-hoc signed (not notarized), so macOS quarantines it and Gatekeeper blocks the first launch. The `xattr` line clears that — it's the one bulletproof step (Homebrew's old `--no-quarantine` flag was removed in recent versions). Update with `brew upgrade --cask whisperdict` (re-run the `xattr` line after an update). On first run, grant Microphone + Accessibility.
+WhisperDict is signed with a Developer ID and **notarized by Apple**, so it launches straight away — no Gatekeeper warning, no extra steps. Update with `brew upgrade --cask whisperdict`. On first run, grant Microphone + Accessibility.
 
 ### Option B — Download
 
-1. Grab the latest `WhisperDict.app` from the [**Releases**](../../releases)
-   page and unzip it.
-2. **First launch is blocked by macOS** because the app is ad-hoc signed (not
-   notarized). Double-click it once — macOS refuses — then open **System
-   Settings → Privacy & Security**, scroll to the bottom, and click
-   **“Open Anyway”**, then **Open** in the confirmation dialog.
-   *(On macOS 14 and earlier you can instead Control-click the app → **Open**.)*
-3. On first run, WhisperDict offers to **move itself into Applications** —
-   accept it. That clears the security warning for good. From then on it
-   launches normally and walks you through microphone + accessibility
-   permissions.
-
-> Prefer the command line? `xattr -dr com.apple.quarantine /path/to/WhisperDict.app`
-> removes the quarantine flag so it opens directly.
+1. Download `WhisperDict-<version>.dmg` from the [**Releases**](../../releases)
+   page and open it.
+2. Drag **WhisperDict** into the **Applications** folder.
+3. Launch it — it's notarized by Apple, so it opens normally and walks you
+   through microphone + accessibility permissions.
 
 ### Option C — Build from source
 

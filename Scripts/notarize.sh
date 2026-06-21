@@ -53,7 +53,7 @@ ditto -c -k --keepParent "$APP" "$ZIP"
 xcrun notarytool submit "$ZIP" --keychain-profile "$PROFILE" --wait
 rm -f "$ZIP"
 
-echo "→ Stapling the notarization ticket into $APP…"
+echo "→ Stapling the notarization ticket into ${APP}…"
 xcrun stapler staple "$APP"
 
 # ── 2. Build the DMG from the stapled app, then notarize the DMG ───

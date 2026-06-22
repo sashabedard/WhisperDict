@@ -17,8 +17,8 @@
 import Foundation
 
 /// The prompt text shared by every Enhance backend. Backends differ only in the
-/// generation mechanism (Apple = guided generation; MLX = chat completion); the
-/// instructions and user message are identical.
+/// generation mechanism (Apple = guided generation; OpenAI-compatible = chat
+/// completion); the instructions and user message are identical.
 enum EnhancePrompt {
 
     static func instructions(style: EnhanceStyle, formatLists: Bool) -> String {

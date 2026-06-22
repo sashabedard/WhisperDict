@@ -49,7 +49,9 @@ final class OnboardingWindowController: NSWindowController, NSWindowDelegate {
         NotificationCenter.default.addObserver(
             forName: NSApplication.didBecomeActiveNotification,
             object: nil, queue: .main
-        ) { [weak self] _ in self?.refreshStatus() }
+        ) { [weak self] _ in
+            Task { @MainActor in self?.refreshStatus() }
+        }
     }
 
     func show() {

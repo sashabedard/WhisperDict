@@ -44,8 +44,7 @@ enum TextReplacer {
         let system = AXUIElementCreateSystemWide()
         var focused: AnyObject?
         guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focused) == .success,
-              let focused else { return nil }
-        // AX returns an AXUIElement (a CFType) here.
+              let focused, CFGetTypeID(focused) == AXUIElementGetTypeID() else { return nil }
         return (focused as! AXUIElement)
     }
 }

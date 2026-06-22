@@ -47,11 +47,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// dispatch the standard editing action to the first responder directly.
     private func installEditKeyMonitor() {
         let actions: [String: Selector] = [
-            "x": Selector(("cut:")),
-            "c": Selector(("copy:")),
-            "v": Selector(("paste:")),
-            "a": Selector(("selectAll:")),
-            "z": Selector(("undo:")),
+            "x": #selector(NSText.cut(_:)),
+            "c": #selector(NSText.copy(_:)),
+            "v": #selector(NSText.paste(_:)),
+            "a": #selector(NSText.selectAll(_:)),
+            "z": Selector(("undo:")),   // no public #selector target; responder-chain action
         ]
         editKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             guard event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,

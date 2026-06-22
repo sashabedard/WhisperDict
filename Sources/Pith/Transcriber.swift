@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+import Foundation
 import WhisperKit
 
 struct Transcription {
@@ -76,7 +77,7 @@ actor Transcriber {
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             return Transcription(text: text, language: language)
         } catch {
-            print("WhisperKit error: \(error)")
+            NSLog("Pith: transcription failed: %@", String(describing: error))
             return Transcription(text: "", language: "")
         }
     }

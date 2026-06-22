@@ -112,15 +112,11 @@ final class UserSettings {
         set { UserDefaults.standard.set(newValue, forKey: "lastUpdateCheck") }
     }
 
-    /// Which Enhance engine to use: "apple" (built-in, default) or "mlx" (Gemma).
+    /// Which Enhance engine to use: "apple" (on-device, default) or "openai"
+    /// (a custom OpenAI-compatible endpoint — see openAIEndpoint/openAIModel).
     var enhanceBackend: String {
         get { UserDefaults.standard.string(forKey: "enhanceBackend") ?? "apple" }
         set { UserDefaults.standard.set(newValue, forKey: "enhanceBackend") }
-    }
-    /// MLX model variant when enhanceBackend == "mlx": "e2b" or "e4b" (default).
-    var mlxModelVariant: String {
-        get { UserDefaults.standard.string(forKey: "mlxModelVariant") ?? "e4b" }
-        set { UserDefaults.standard.set(newValue, forKey: "mlxModelVariant") }
     }
     /// BYOK OpenAI-compatible endpoint base URL (e.g. https://openrouter.ai/api/v1
     /// or http://localhost:11434/v1). Empty = not configured.

@@ -45,7 +45,7 @@ actor Enhancer {
     private let byokProvider: @Sendable () -> EnhanceBackend?
 
     init(apple: EnhanceBackend = AppleEnhanceBackend(),
-         byokProvider: @Sendable @escaping () -> EnhanceBackend? = Enhancer.settingsByok) {
+         byokProvider: @Sendable @escaping () -> EnhanceBackend? = { Enhancer.settingsByok() }) {
         self.apple = apple
         self.byokProvider = byokProvider
     }

@@ -109,6 +109,8 @@ feature switches off gracefully.
 brew install --cask sashabedard/pith/pith
 ```
 
+If Homebrew refuses with *"untrusted tap"*, run `brew trust sashabedard/pith` once, then re-run the install.
+
 Pith is signed with a Developer ID and **notarized by Apple**, so it launches straight away — no Gatekeeper warning, no extra steps. Update with `brew upgrade --cask pith`. On first run, grant Microphone + Accessibility.
 
 ### Option B — Download

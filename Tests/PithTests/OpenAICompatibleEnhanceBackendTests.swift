@@ -82,4 +82,24 @@ final class OpenAICompatibleEnhanceBackendTests: XCTestCase {
         let out = await backend.runCommand(instruction: "uppercase", on: "hi")
         XCTAssertEqual(out, "Clean text.")
     }
+
+    func testOpenRouterEndpointEnforcesZDR() async {
+        let mock = MockTransport(.success(http(200, okBody)))
+        let backend = OpenAICompatibleEnhanceBackend(endpoint: "https://openrouter.ai/api/v1",
+                                                     model: "meta-llama/llama-3.1-8b-instruct",
+                                                     apiKey: "k", transport: mock)
+        _ = await backend.enhance("hi", style: .faithful, vocabulary: [], profile: "", formatLists: false)
+        let body = try! JSONSerialization.jsonObject(with: mock.captured!.httpBody!) as! [String: Any]
+        let provider = body["provider"] as? [String: Any]
+        XCTAssertEqual(provider?["zdr"] as? Bool, true)
+    }
+
+    func testNonOpenRouterEndpointHasNoProviderField() async {
+        let mock = MockTransport(.success(http(200, okBody)))
+        let backend = OpenAICompatibleEnhanceBackend(endpoint: "http://localhost:11434/v1",
+                                                     model: "llama3.1", apiKey: "", transport: mock)
+        _ = await backend.enhance("hi", style: .faithful, vocabulary: [], profile: "", formatLists: false)
+        let body = try! JSONSerialization.jsonObject(with: mock.captured!.httpBody!) as! [String: Any]
+        XCTAssertNil(body["provider"])
+    }
 }

@@ -5,8 +5,19 @@ protocol HTTPTransport: Sendable {
 }
 
 struct URLSessionTransport: HTTPTransport {
+    private let session: URLSession
+    init() {
+        // Dedicated session with HARD timeouts. URLSession.shared defaults
+        // timeoutIntervalForResource to 7 days, so a slow/held connection can
+        // hang ~forever — this caps the whole request at 30s.
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 30
+        config.timeoutIntervalForResource = 30
+        config.waitsForConnectivity = false
+        session = URLSession(configuration: config)
+    }
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
         return (data, http)
     }
@@ -57,12 +68,18 @@ actor OpenAICompatibleEnhanceBackend: EnhanceBackend {
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         if !apiKey.isEmpty { req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization") }
-        let payload: [String: Any] = [
+        var payload: [String: Any] = [
             "model": model,
             "temperature": 0,
             "messages": [["role": "system", "content": system],
                          ["role": "user", "content": user]],
         ]
+        // OpenRouter only: enforce Zero Data Retention so the prompt is never
+        // stored. Other OpenAI-compatible servers would reject an unknown
+        // "provider" field, so gate it on the OpenRouter host.
+        if endpoint.lowercased().contains("openrouter.ai") {
+            payload["provider"] = ["zdr": true]
+        }
         guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return nil }
         req.httpBody = body
         do {

@@ -37,6 +37,26 @@ private let enhanceBackends: [(id: String, label: String)] = [
     ("openai", "Custom — OpenAI-compatible"),
 ]
 
+/// Endpoint + suggested-model presets for the BYOK engine. "Custom…" is last
+/// and leaves the fields free. `models` seed the editable model combo box.
+private struct ByokProvider { let label: String; let endpoint: String; let models: [String] }
+private let byokProviders: [ByokProvider] = [
+    // Cheap small instruct models, all present in OpenRouter's ZDR endpoint list
+    // (/api/v1/endpoints/zdr) — text cleanup doesn't need a big model. ZDR is
+    // enforced automatically for OpenRouter (see OpenAICompatibleEnhanceBackend).
+    ByokProvider(label: "OpenRouter", endpoint: "https://openrouter.ai/api/v1",
+                 models: ["meta-llama/llama-3.1-8b-instruct", "mistralai/mistral-nemo",
+                          "qwen/qwen-2.5-7b-instruct", "google/gemma-3-4b-it", "microsoft/phi-4"]),
+    ByokProvider(label: "OpenAI", endpoint: "https://api.openai.com/v1",
+                 models: ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini"]),
+    ByokProvider(label: "Groq", endpoint: "https://api.groq.com/openai/v1",
+                 models: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]),
+    ByokProvider(label: "Ollama (local)", endpoint: "http://localhost:11434/v1",
+                 models: ["llama3.1", "llama3.2", "qwen2.5", "mistral"]),
+    ByokProvider(label: "LM Studio (local)", endpoint: "http://localhost:1234/v1", models: []),
+    ByokProvider(label: "Custom…", endpoint: "", models: []),
+]
+
 /// One-line guidance shown under the model picker so a first-time user knows
 /// which to pick. Distil is English-only — important for non-English users.
 private let modelNotes: [String: String] = [
@@ -46,7 +66,7 @@ private let modelNotes: [String: String] = [
 ]
 
 @MainActor
-final class PreferencesWindowController: NSWindowController, NSWindowDelegate, NSTextFieldDelegate, NSTextViewDelegate {
+final class PreferencesWindowController: NSWindowController, NSWindowDelegate, NSTextFieldDelegate, NSTextViewDelegate, NSComboBoxDelegate {
     private let langPopup  = NSPopUpButton()
     private let modelPopup = NSPopUpButton()
     private let hotkeyPopup = NSPopUpButton()
@@ -65,8 +85,9 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     private let profileField  = ProfileTextField()
     private let snippetsField = ProfileTextField()
     private let backendPopup  = NSPopUpButton()
+    private let providerPopup = NSPopUpButton()
     private let endpointField = NSTextField()
-    private let modelField    = NSTextField()
+    private let modelCombo    = NSComboBox()
     private let apiKeyField   = NSSecureTextField()
     private let testButton    = NSButton(title: "Test", target: nil, action: nil)
     private let byokNote      = NSTextField(wrappingLabelWithString: "")
@@ -356,6 +377,11 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
                        selectedIndex: enhanceBackends.firstIndex { $0.id == UserSettings.shared.enhanceBackend } ?? 0,
                        action: #selector(backendChanged))
 
+        configurePopup(providerPopup,
+                       items: byokProviders.map { $0.label },
+                       selectedIndex: selectedProviderIndex(),
+                       action: #selector(providerChanged))
+
         endpointField.stringValue = UserSettings.shared.openAIEndpoint
         endpointField.placeholderString = "https://openrouter.ai/api/v1"
         endpointField.delegate = self
@@ -363,12 +389,16 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         endpointField.font = .systemFont(ofSize: 13)
         endpointField.translatesAutoresizingMaskIntoConstraints = false
 
-        modelField.stringValue = UserSettings.shared.openAIModel
-        modelField.placeholderString = "openai/gpt-4o-mini"
-        modelField.delegate = self
-        modelField.controlSize = .large
-        modelField.font = .systemFont(ofSize: 13)
-        modelField.translatesAutoresizingMaskIntoConstraints = false
+        modelCombo.isEditable = true
+        modelCombo.completes = true
+        modelCombo.delegate = self
+        modelCombo.controlSize = .large
+        modelCombo.font = .systemFont(ofSize: 13)
+        modelCombo.placeholderString = "openai/gpt-4o-mini"
+        modelCombo.removeAllItems()
+        modelCombo.addItems(withObjectValues: byokProviders[selectedProviderIndex()].models)
+        modelCombo.stringValue = UserSettings.shared.openAIModel
+        modelCombo.translatesAutoresizingMaskIntoConstraints = false
 
         apiKeyField.stringValue = KeychainStore().get("apiKey") ?? ""
         apiKeyField.placeholderString = "API key (optional for local servers)"
@@ -385,12 +415,23 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         byokNote.stringValue = "⚠️ Your transcripts are sent to this endpoint. On-device privacy applies only to the Apple option."
         byokNote.font = .systemFont(ofSize: 11)
         byokNote.textColor = .secondaryLabelColor
+        byokNote.lineBreakMode = .byWordWrapping
+        byokNote.maximumNumberOfLines = 0
+        byokNote.preferredMaxLayoutWidth = 360
         byokNote.translatesAutoresizingMaskIntoConstraints = false
         updateByokNote()
 
+        // Uniform width: every text input / popup stretches to fill the row, so
+        // they all line up at the same (generous) width regardless of content.
+        for control in [stylePopup, backendPopup, providerPopup,
+                        endpointField, modelCombo, apiKeyField, vocabField] as [NSView] {
+            control.setContentHuggingPriority(.defaultLow, for: .horizontal)
+            control.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        }
+
         var rows: [(String, NSView)] = [
-            ("Enhance",    enhanceSwitch),
-            ("Auto style", perAppSwitch),
+            ("Enhance",    leadingControl(enhanceSwitch)),
+            ("Auto style", leadingControl(perAppSwitch)),
             ("Style",      styleCol),
             ("Vocabulary", vocabField),
             ("About you",  profileField),
@@ -398,10 +439,11 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         ]
         if UserSettings.shared.enhanceBackend == "openai" {
             rows += [
+                ("Provider", providerPopup),
                 ("Endpoint", endpointField),
-                ("Model",    modelField),
+                ("Model",    modelCombo),
                 ("API key",  apiKeyField),
-                ("",         testButton),
+                ("",         leadingControl(testButton)),
                 ("",         byokNote),
             ]
         }
@@ -517,6 +559,24 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
 
     private static let labelColumnWidth: CGFloat = 96
 
+    /// Wrap a control that shouldn't stretch (switch, button) so it stays its
+    /// natural size at the leading edge — a trailing low-hugging spacer eats the
+    /// rest of the row width, instead of the control being centered in a
+    /// full-width slot.
+    private func leadingControl(_ control: NSView) -> NSView {
+        let spacer = NSView()
+        spacer.translatesAutoresizingMaskIntoConstraints = false
+        spacer.setContentHuggingPriority(.init(1), for: .horizontal)
+        spacer.setContentCompressionResistancePriority(.init(1), for: .horizontal)
+        let row = NSStackView(views: [control, spacer])
+        row.orientation = .horizontal
+        row.spacing = 0
+        row.alignment = .centerY
+        row.distribution = .fill
+        row.translatesAutoresizingMaskIntoConstraints = false
+        return row
+    }
+
     private func makeCard(rows: [(String, NSView)]) -> NSView {
         let col = NSStackView()
         col.orientation = .vertical
@@ -597,8 +657,8 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         } else if field === endpointField {
             UserSettings.shared.openAIEndpoint = endpointField.stringValue
             updateByokNote()
-        } else if field === modelField {
-            UserSettings.shared.openAIModel = modelField.stringValue
+        } else if field === modelCombo {
+            UserSettings.shared.openAIModel = modelCombo.stringValue
         } else if field === apiKeyField {
             KeychainStore().set(apiKeyField.stringValue, account: "apiKey")
         }
@@ -625,16 +685,56 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         selectTab(1)
     }
 
+    /// The byokProviders index whose endpoint matches the saved one, else the
+    /// "Custom…" row (last).
+    private func selectedProviderIndex() -> Int {
+        let saved = UserSettings.shared.openAIEndpoint
+        return byokProviders.firstIndex { !$0.endpoint.isEmpty && $0.endpoint == saved } ?? (byokProviders.count - 1)
+    }
+
+    @objc private func providerChanged() {
+        let p = byokProviders[providerPopup.indexOfSelectedItem]
+        guard p.label != "Custom…" else {
+            modelCombo.removeAllItems()    // free entry; keep whatever's typed
+            updateByokNote()
+            return
+        }
+        endpointField.stringValue = p.endpoint
+        UserSettings.shared.openAIEndpoint = p.endpoint
+        modelCombo.removeAllItems()
+        modelCombo.addItems(withObjectValues: p.models)
+        // Keep the current model if it's valid for this provider, else default to
+        // the first suggestion.
+        if !p.models.contains(modelCombo.stringValue) {
+            let m = p.models.first ?? ""
+            modelCombo.stringValue = m
+            UserSettings.shared.openAIModel = m
+        }
+        updateByokNote()
+    }
+
+    func comboBoxSelectionDidChange(_ notification: Notification) {
+        guard (notification.object as? NSComboBox) === modelCombo,
+              let value = modelCombo.objectValueOfSelectedItem as? String else { return }
+        UserSettings.shared.openAIModel = value
+    }
+
     private func updateByokNote() {
-        let remote = !UserSettings.shared.openAIEndpoint.isEmpty && !Endpoint.isLocal(UserSettings.shared.openAIEndpoint)
+        let endpoint = UserSettings.shared.openAIEndpoint
+        let remote = !endpoint.isEmpty && !Endpoint.isLocal(endpoint)
         byokNote.isHidden = !(UserSettings.shared.enhanceBackend == "openai" && remote)
+        if endpoint.lowercased().contains("openrouter.ai") {
+            byokNote.stringValue = "🔒 Sent to OpenRouter with Zero Data Retention enforced — processed but never stored. (It still leaves your Mac.)"
+        } else {
+            byokNote.stringValue = "⚠️ Your transcripts are sent to this endpoint. On-device privacy applies only to the Apple option."
+        }
     }
 
     @objc private func testByokClicked() {
         testButton.isEnabled = false
         testButton.title = "Testing…"
         let backend = OpenAICompatibleEnhanceBackend(endpoint: endpointField.stringValue,
-                                                     model: modelField.stringValue,
+                                                     model: modelCombo.stringValue,
                                                      apiKey: apiKeyField.stringValue)
         Task { @MainActor in
             let ok = await backend.enhance("ping", style: .faithful, vocabulary: [], profile: "", formatLists: false) != nil

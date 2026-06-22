@@ -196,9 +196,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 let vocab = UserSettings.shared.vocabularyTerms
                 let profile = UserSettings.shared.profile
                 let formatLists = AppContext.supportsRichLists(bundleID: bundleID)
+                // Cloud BYOK needs longer than the on-device model; 10s would
+                // cut off most remote LLM calls and force a raw fallback.
+                let enhanceTimeoutNs: UInt64 = UserSettings.shared.enhanceBackend == "openai"
+                    ? 30_000_000_000 : 10_000_000_000
                 let result: EnhanceResult = await withTaskGroup(of: EnhanceResult?.self) { group in
                     group.addTask { await self.enhancer.enhance(text, style: style, vocabulary: vocab, profile: profile, formatLists: formatLists) }
-                    group.addTask { try? await Task.sleep(nanoseconds: 10_000_000_000); return nil }
+                    group.addTask { try? await Task.sleep(nanoseconds: enhanceTimeoutNs); return nil }
                     let first = await group.next() ?? nil
                     group.cancelAll()
                     return first ?? EnhanceResult(text: text, warning: nil)

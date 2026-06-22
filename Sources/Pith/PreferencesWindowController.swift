@@ -62,7 +62,7 @@ private let byokProviders: [ByokProvider] = [
     // enforced automatically for OpenRouter (see OpenAICompatibleEnhanceBackend).
     ByokProvider(label: "OpenRouter", endpoint: "https://openrouter.ai/api/v1",
                  models: ["meta-llama/llama-3.1-8b-instruct", "mistralai/mistral-nemo",
-                          "qwen/qwen-2.5-7b-instruct", "google/gemma-3-4b-it", "microsoft/phi-4"]),
+                          "qwen/qwen-2.5-7b-instruct", "google/gemma-4-26b-a4b-it", "microsoft/phi-4"]),
     ByokProvider(label: "OpenAI", endpoint: "https://api.openai.com/v1",
                  models: ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini"]),
     ByokProvider(label: "Groq", endpoint: "https://api.groq.com/openai/v1",

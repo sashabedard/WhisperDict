@@ -24,3 +24,6 @@ __pycache__/
 .claude/
 .remember/
 docs/superpowers/
+
+# graphify skill output (local only)
+graphify-out/

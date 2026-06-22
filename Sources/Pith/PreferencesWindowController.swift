@@ -424,9 +424,22 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         // Uniform width: every text input / popup stretches to fill the row, so
         // they all line up at the same (generous) width regardless of content.
         for control in [stylePopup, backendPopup, providerPopup,
-                        endpointField, modelCombo, apiKeyField, vocabField] as [NSView] {
+                        endpointField, modelCombo, apiKeyField, vocabField, profileField] as [NSView] {
             control.setContentHuggingPriority(.defaultLow, for: .horizontal)
             control.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        }
+        // Roomier, uniform height for single-line inputs (the bezeled boxes were
+        // cramped). profileField is multi-line and keeps its own height.
+        for control in [stylePopup, backendPopup, providerPopup,
+                        endpointField, modelCombo, apiKeyField, vocabField] as [NSView] {
+            control.heightAnchor.constraint(equalToConstant: 28).isActive = true
+        }
+        // Whole Enhance section shares one enabled state so every box looks the
+        // same (no field dimmed while its neighbours stay bright). backendPopup
+        // stays enabled so you can always switch engines.
+        let enhanceActive = available && UserSettings.shared.enhanceEnabled
+        for control in [providerPopup, endpointField, modelCombo, apiKeyField, testButton] {
+            control.isEnabled = enhanceActive
         }
 
         var rows: [(String, NSView)] = [
@@ -444,10 +457,20 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
                 ("Model",    modelCombo),
                 ("API key",  apiKeyField),
                 ("",         leadingControl(testButton)),
-                ("",         byokNote),
             ]
         }
-        return makeCard(rows: rows)
+        let card = makeCard(rows: rows)
+        guard UserSettings.shared.enhanceBackend == "openai" else { return card }
+        // The privacy note spans the full width BELOW the card (not in a label
+        // row), so it wraps cleanly instead of truncating.
+        let stack = NSStackView(views: [card, byokNote])
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 10
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        byokNote.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        return stack
     }
 
     private func buildCommandsTab() -> NSView {
@@ -531,6 +554,9 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         col.spacing = 4
         col.translatesAutoresizingMaskIntoConstraints = false
         caption.widthAnchor.constraint(equalTo: col.widthAnchor).isActive = true
+        // Stretch the control to the column's full width so it lines up with the
+        // other rows' inputs (otherwise the popup sizes to its content).
+        control.widthAnchor.constraint(equalTo: col.widthAnchor).isActive = true
         return col
     }
 
@@ -637,10 +663,14 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     @objc private func enhanceToggled() {
         let on = enhanceSwitch.state == .on
         UserSettings.shared.enhanceEnabled = on
-        perAppSwitch.isEnabled = on && Enhancer.isAvailable
-        stylePopup.isEnabled = on && Enhancer.isAvailable
-        vocabField.isEnabled = on && Enhancer.isAvailable
-        profileField.setEnabled(on && Enhancer.isAvailable)
+        let active = on && Enhancer.isAvailable
+        perAppSwitch.isEnabled = active
+        stylePopup.isEnabled = active
+        vocabField.isEnabled = active
+        profileField.setEnabled(active)
+        for control in [providerPopup, endpointField, modelCombo, apiKeyField, testButton] {
+            control.isEnabled = active
+        }
         NotificationCenter.default.post(name: .enhanceSettingsChanged, object: nil)
     }
 

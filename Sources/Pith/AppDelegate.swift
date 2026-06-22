@@ -24,9 +24,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var prefsWindow: PreferencesWindowController?
     private var onboarding:  OnboardingWindowController?
 
+    private var editKeyMonitor: Any?
+
+    /// LSUIElement (`.accessory`) apps don't reliably route ⌘X/⌘C/⌘V/⌘A/⌘Z to the
+    /// focused text field via the main menu, so intercept those key-downs and
+    /// dispatch the standard editing action to the first responder directly.
+    private func installEditKeyMonitor() {
+        let actions: [String: Selector] = [
+            "x": Selector(("cut:")),
+            "c": Selector(("copy:")),
+            "v": Selector(("paste:")),
+            "a": Selector(("selectAll:")),
+            "z": Selector(("undo:")),
+        ]
+        editKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command,
+                  let key = event.charactersIgnoringModifiers?.lowercased(),
+                  let selector = actions[key] else { return event }
+            // sendAction returns false when no responder handles it (e.g. no text
+            // field focused) — pass the event through unchanged in that case.
+            return NSApp.sendAction(selector, to: nil, from: nil) ? nil : event
+        }
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         let opts = ["AXTrustedCheckOptionPrompt" as CFString: true] as CFDictionary
         _ = AXIsProcessTrustedWithOptions(opts)
+
+        installEditKeyMonitor()
 
         menuBar = MenuBarController()
         menuBar.configure(

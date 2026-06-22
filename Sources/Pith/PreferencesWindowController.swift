@@ -81,6 +81,11 @@ private let modelNotes: [String: String] = [
     "distil-whisper_distil-large-v3_594MB": "English only, but the fastest.",
 ]
 
+/// Top-origin container for a scroll view's document view.
+private final class FlippedView: NSView {
+    override var isFlipped: Bool { true }
+}
+
 @MainActor
 final class PreferencesWindowController: NSWindowController, NSWindowDelegate, NSTextFieldDelegate, NSTextViewDelegate, NSComboBoxDelegate {
     private let langPopup  = NSPopUpButton()
@@ -93,6 +98,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     private var inputDeviceUIDs: [String] = []
     private let modelCaption = NSTextField(wrappingLabelWithString: "")
     private let autoUpdateSwitch = NSSwitch()
+    private let loginSwitch = NSSwitch()
     private let enhanceSwitch = NSSwitch()
     private let perAppSwitch   = NSSwitch()
     private let stylePopup    = NSPopUpButton()
@@ -107,6 +113,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     private let apiKeyField   = NSSecureTextField()
     private let testButton    = NSButton(title: "Test", target: nil, action: nil)
     private let byokNote      = NSTextField(wrappingLabelWithString: "")
+    private var byokRowViews: [NSView] = []   // Provider…Test rows, toggled with the engine
 
     // MARK: Stats dashboard
     private let statsDashboard = StatsDashboardView()
@@ -117,6 +124,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
     private var contentContainer = NSView()
     private var selectedTab = 0
     private var tabViewCache: [Int: NSView] = [:]
+    private weak var currentTabView: NSView?
     private var saveButton: NSButton?
 
     convenience init() {
@@ -142,6 +150,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         NSApp.setActivationPolicy(.regular)
         showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
+        fitWindowToContent()
     }
 
     func windowWillClose(_ notification: Notification) {
@@ -235,11 +244,10 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
             saveBtn.bottomAnchor.constraint(equalTo: bg.bottomAnchor, constant: -20),
         ])
 
-        // Fixed content size so the window keeps the same dimensions on every tab
-        // (otherwise it auto-sizes to each tab's content — wide for General's popups,
-        // narrow for Enhance's switches).
+        // Fixed WIDTH for consistency across tabs; HEIGHT resizes to fit each
+        // tab's content (fitWindowToContent), with the scroll view as a fallback
+        // only when a tab is taller than the screen.
         bg.widthAnchor.constraint(equalToConstant: 660).isActive = true
-        bg.heightAnchor.constraint(equalToConstant: 540).isActive = true
 
         selectTab(0)
         return bg
@@ -255,16 +263,65 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
             btn.state = i == index ? .on : .off
         }
         contentContainer.subviews.forEach { $0.removeFromSuperview() }
+
         let tabView = cachedTab(index)
         tabView.translatesAutoresizingMaskIntoConstraints = false
-        contentContainer.addSubview(tabView)
+
+        // Host the tab in a scroll view so a tall tab (Enhance with BYOK rows)
+        // scrolls instead of overflowing the fixed-height window and compressing
+        // rows. The flipped document view keeps content top-aligned.
+        let doc = FlippedView()
+        doc.translatesAutoresizingMaskIntoConstraints = false
+        doc.addSubview(tabView)
+
+        let scroll = NSScrollView()
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        scroll.drawsBackground = false
+        scroll.hasVerticalScroller = true
+        scroll.hasHorizontalScroller = false
+        scroll.scrollerStyle = .overlay
+        scroll.documentView = doc
+        contentContainer.addSubview(scroll)
+
         NSLayoutConstraint.activate([
-            tabView.topAnchor.constraint(equalTo: contentContainer.topAnchor),
-            tabView.leadingAnchor.constraint(equalTo: contentContainer.leadingAnchor),
-            tabView.trailingAnchor.constraint(equalTo: contentContainer.trailingAnchor),
-            tabView.bottomAnchor.constraint(lessThanOrEqualTo: contentContainer.bottomAnchor),
+            scroll.topAnchor.constraint(equalTo: contentContainer.topAnchor),
+            scroll.leadingAnchor.constraint(equalTo: contentContainer.leadingAnchor),
+            scroll.trailingAnchor.constraint(equalTo: contentContainer.trailingAnchor),
+            scroll.bottomAnchor.constraint(equalTo: contentContainer.bottomAnchor),
+
+            doc.topAnchor.constraint(equalTo: scroll.contentView.topAnchor),
+            doc.leadingAnchor.constraint(equalTo: scroll.contentView.leadingAnchor),
+            doc.trailingAnchor.constraint(equalTo: scroll.contentView.trailingAnchor),
+            doc.widthAnchor.constraint(equalTo: scroll.contentView.widthAnchor),
+
+            tabView.topAnchor.constraint(equalTo: doc.topAnchor),
+            tabView.leadingAnchor.constraint(equalTo: doc.leadingAnchor),
+            tabView.trailingAnchor.constraint(equalTo: doc.trailingAnchor),
+            tabView.bottomAnchor.constraint(equalTo: doc.bottomAnchor),
         ])
+        currentTabView = tabView
         if index == 4 { statsDashboard.refresh() }
+        fitWindowToContent()
+    }
+
+    /// Resize the window's height so the current tab's content fits without
+    /// scrolling, keeping the top edge anchored. Capped to the screen — beyond
+    /// that the scroll view takes over. Width stays fixed.
+    private func fitWindowToContent() {
+        guard let window = window, let bg = window.contentView else { return }
+        window.layoutIfNeeded()
+        let contentH = currentTabView?.fittingSize.height ?? contentContainer.frame.height
+        let chrome = bg.frame.height - contentContainer.frame.height   // top inset + save strip
+        var target = (chrome + contentH).rounded(.up)
+        if let visible = (window.screen ?? NSScreen.main)?.visibleFrame.height {
+            target = min(target, visible - 40)
+        }
+        target = max(target, 320)
+        guard abs(window.frame.height - target) > 0.5 else { return }
+        var frame = window.frame
+        frame.origin.y += frame.height - target   // keep the top edge in place
+        frame.size.height = target
+        window.setFrame(frame, display: true, animate: false)
     }
 
     private func cachedTab(_ index: Int) -> NSView {
@@ -337,13 +394,24 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         updateCol.spacing = 4
         updateCaption.widthAnchor.constraint(equalTo: updateCol.widthAnchor).isActive = true
 
+        loginSwitch.state = LoginItem.isEnabled ? .on : .off
+        loginSwitch.target = self
+        loginSwitch.action = #selector(loginToggled)
+
         return makeCard(rows: [
-            ("Shortcut",   hotkeyPopup),
-            ("Language",   langPopup),
-            ("Model",      modelCol),
-            ("Microphone", inputPopup),
-            ("Updates",    updateCol),
-        ])
+            ("Shortcut",      hotkeyPopup),
+            ("Language",      langPopup),
+            ("Model",         modelCol),
+            ("Microphone",    inputPopup),
+            ("Open at login", leadingControl(loginSwitch)),
+            ("Updates",       updateCol),
+        ]).card
+    }
+
+    @objc private func loginToggled() {
+        LoginItem.setEnabled(loginSwitch.state == .on)
+        // Reflect the real system status (handles a register/unregister failure).
+        loginSwitch.state = LoginItem.isEnabled ? .on : .off
     }
 
     private func buildEnhanceTab() -> NSView {
@@ -458,27 +526,27 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
             control.isEnabled = enhanceActive
         }
 
-        var rows: [(String, NSView)] = [
+        // Build EVERY row once. Switching the engine only hides/shows the BYOK
+        // rows — it never rebuilds the tab. (Rebuilding re-parented the shared
+        // control instances and corrupted the layout.)
+        let (card, rowStacks) = makeCard(rows: [
             ("Enhance",    leadingControl(enhanceSwitch)),
             ("Auto style", leadingControl(perAppSwitch)),
             ("Style",      styleCol),
             ("Vocabulary", vocabField),
             ("About you",  profileField),
             ("Engine",     backendPopup),
-        ]
-        if UserSettings.shared.enhanceBackend == "openai" {
-            rows += [
-                ("Provider", providerPopup),
-                ("Endpoint", endpointField),
-                ("Model",    modelCombo),
-                ("API key",  apiKeyField),
-                ("",         leadingControl(testButton)),
-            ]
-        }
-        let card = makeCard(rows: rows)
-        guard UserSettings.shared.enhanceBackend == "openai" else { return card }
-        // The privacy note spans the full width BELOW the card (not in a label
-        // row), so it wraps cleanly instead of truncating.
+            ("Provider",   providerPopup),
+            ("Endpoint",   endpointField),
+            ("Model",      modelCombo),
+            ("API key",    apiKeyField),
+            ("",           leadingControl(testButton)),
+        ])
+        byokRowViews = Array(rowStacks[6...10])   // Provider → Test
+        updateByokVisibility()
+
+        // The privacy note spans the full width BELOW the card so it wraps
+        // cleanly; hidden unless a remote endpoint is selected.
         let stack = NSStackView(views: [card, byokNote])
         stack.orientation = .vertical
         stack.alignment = .leading
@@ -487,6 +555,13 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         byokNote.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         return stack
+    }
+
+    /// Show the BYOK rows + note only when the OpenAI-compatible engine is selected.
+    private func updateByokVisibility() {
+        let show = UserSettings.shared.enhanceBackend == "openai"
+        byokRowViews.forEach { $0.isHidden = !show }
+        updateByokNote()
     }
 
     private func buildCommandsTab() -> NSView {
@@ -503,7 +578,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
 
         let card = makeCard(rows: [
             ("Command key", commandCol),
-        ])
+        ]).card
 
         let examplesTitle = NSTextField(labelWithString: "Try saying, while holding the command key with text selected:")
         examplesTitle.font = .systemFont(ofSize: 11)
@@ -519,7 +594,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         note.font = .systemFont(ofSize: 11)
         note.textColor = .tertiaryLabelColor
 
-        let examplesCard = makeCard(rows: [("Examples", examples)])
+        let examplesCard = makeCard(rows: [("Examples", examples)]).card
 
         let stack = NSStackView(views: [card, examplesTitle, examplesCard, note])
         stack.orientation = .vertical
@@ -539,7 +614,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
             snippetsField.heightAnchor.constraint(equalToConstant: 120).isActive = true
         }
 
-        let card = makeCard(rows: [("Snippets", snippetsField)])
+        let card = makeCard(rows: [("Snippets", snippetsField)]).card
 
         let hint = NSTextField(wrappingLabelWithString: "Spoken shortcuts, one per line:  trigger => expansion  (e.g.  my email => you@example.com)")
         hint.font = .systemFont(ofSize: 11)
@@ -619,7 +694,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         return row
     }
 
-    private func makeCard(rows: [(String, NSView)]) -> NSView {
+    private func makeCard(rows: [(String, NSView)]) -> (card: NSView, rowStacks: [NSStackView]) {
         let col = NSStackView()
         col.orientation = .vertical
         col.alignment = .leading
@@ -662,7 +737,7 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
         for row in rowStacks {
             row.widthAnchor.constraint(equalTo: col.widthAnchor).isActive = true
         }
-        return card
+        return (card, rowStacks)
     }
 
     // MARK: - Actions
@@ -727,8 +802,8 @@ final class PreferencesWindowController: NSWindowController, NSWindowDelegate, N
 
     @objc private func backendChanged() {
         UserSettings.shared.enhanceBackend = enhanceBackends[backendPopup.indexOfSelectedItem].id
-        tabViewCache[1] = nil
-        selectTab(1)
+        updateByokVisibility()
+        fitWindowToContent()
     }
 
     /// The byokProviders index whose endpoint matches the saved one, else the

@@ -180,7 +180,13 @@ Everything else stays 100% on-device.
 
 ## License
 
-[MIT](LICENSE) © 2026 Sasha Bedard
+**[GNU AGPLv3](LICENSE)** © 2026 Sasha Bédard.
+
+Pith is free and open source. You may use, study, modify, and share it — but
+**any distributed or network-hosted derivative must also be released as open
+source under the AGPLv3** (including a hosted/SaaS version). This keeps Pith open
+and prevents closed-source commercial forks. For a commercial license outside
+these terms, contact the author.
 
 Third-party components and their licenses are listed in
 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

@@ -9,6 +9,21 @@
 
 ![Pith demo — hold a key, speak, release; clean text appears at your cursor](docs/demo.gif)
 
+## What's new in 1.0
+
+- ✨ **Renamed to Pith** (formerly WhisperDict) — the pith of what you said.
+- 🔏 **Signed & notarized by Apple** — installs and launches with no Gatekeeper
+  warning, no workarounds.
+- 🤖 **Bring your own model** — optionally route the cleanup step to any
+  OpenAI-compatible endpoint: **local** (Ollama, LM Studio) or **cloud**
+  (OpenRouter, OpenAI, Groq). Opt-in, off by default — the on-device Apple model
+  stays the default. OpenRouter requests enforce **Zero Data Retention**, with
+  cheap small-model presets built in.
+- 🎨 New app icon and menu-bar glyph.
+- 🍺 **One-line Homebrew install:** `brew install --cask sashabedard/pith/pith`.
+
+See the full history on the [Releases](../../releases) page.
+
 ### Say it, don't write it
 
 It's almost always easier to *describe* what you want out loud than to write it.
@@ -81,7 +96,12 @@ feature switches off gracefully.
   style (and *best-effort* corrections/lists). Runs on Apple's on-device model —
   still 100% private.
   *(Requires macOS 26 + Apple Intelligence; off-by-default-gracefully otherwise.)*
-- **Menu-bar only** — no dock icon, stays out of your way (`🎙`).
+- **Bring your own model (BYOK)** — prefer a stronger cleanup engine? Point the
+  cleanup step at any **OpenAI-compatible** endpoint in Preferences → Enhance:
+  a **local** server (Ollama, LM Studio — stays on your Mac) or a **cloud** one
+  (OpenRouter, OpenAI, Groq). Opt-in and off by default; your API key is stored
+  in the macOS Keychain, and OpenRouter requests enforce **Zero Data Retention**.
+- **Menu-bar only** — no dock icon, stays out of your way.
 - **History** — the last 8 transcriptions are kept; click one to re-paste it.
 - **Configurable** — pick your language (defaults to French) and Whisper model
   in Preferences.
@@ -144,7 +164,7 @@ All build and packaging tooling lives in [`Scripts/`](Scripts):
 
 ## Usage
 
-1. Launch Pith — a `🎙` icon appears in the menu bar.
+1. Launch Pith — its icon appears in the menu bar.
 2. Click into any text field.
 3. **Hold Right-Option**, speak, then **release**.
 4. The transcribed text is pasted automatically.

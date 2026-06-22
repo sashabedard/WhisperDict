@@ -63,7 +63,7 @@ echo "→ Building $DMG from the stapled app…"
 echo "→ Submitting $DMG to the notary service…"
 xcrun notarytool submit "$DMG" --keychain-profile "$PROFILE" --wait
 
-echo "→ Stapling the notarization ticket into $DMG…"
+echo "→ Stapling the notarization ticket into ${DMG}…"
 xcrun stapler staple "$DMG"
 
 echo ""

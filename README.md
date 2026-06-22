@@ -27,6 +27,8 @@
 
 See the full history on the [Releases](../../releases) page.
 
+---
+
 ### Say it, don't write it
 
 It's almost always easier to *describe* what you want out loud than to write it.

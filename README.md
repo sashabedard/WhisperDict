@@ -7,6 +7,9 @@
 > **Talk instead of type.** Hold a key, say what you mean, release — your words
 > appear as text in whatever app you're already in. 100% on-device.
 
+> **pith** /pɪθ/ · *noun* — the essential, concise core of something.
+> *"pithy"*: saying a lot in few words. You speak; Pith keeps the pith.
+
 ![Pith demo — hold a key, speak, release; clean text appears at your cursor](docs/demo.gif)
 
 ## What's new in 1.0
